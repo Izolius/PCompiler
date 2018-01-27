@@ -83,8 +83,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -112,8 +111,7 @@
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
-      <PrecompiledHeader>
-      </PrecompiledHeader>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -146,12 +144,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="CLib.h" />
     <ClInclude Include="PCompiler.h" />
-    <ClInclude Include="Tokens.h" />
+    <ClInclude Include="Token.h" />
+    <ClInclude Include="Variant.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="PCompiler.cpp" />
     <ClCompile Include="Source.cpp" />
+    <ClCompile Include="Token.cpp" />
+    <ClCompile Include="Variant.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="Code.txt" />

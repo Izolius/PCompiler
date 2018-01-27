@@ -9,7 +9,9 @@
 #include <sstream>
 #include <map>
 #include <set>
-#include "Tokens.h"
+#include "Variant.h"
+#include "Token.h"
+#include "CLib.h"
 #include <algorithm>
 using namespace std;
 
@@ -18,17 +20,7 @@ class PCompiler
 	
 
 	static const size_t ERR_MAX = 20;
-	static const char ERR_LITER = '&';
-	static const ETokenCode ERR_TOKEN = ERROR;
 	static const size_t ERR_ERROR = 0;
-	
-	struct CTextPosition
-	{
-		size_t m_line; //номер строки
-		size_t m_pos; //номер позиции
-		CTextPosition(size_t line, size_t pos) :m_line(line), m_pos(pos) {}
-		CTextPosition() :CTextPosition(0, 0) {}
-	};
 
 	struct CError
 	{
@@ -38,44 +30,31 @@ class PCompiler
 		CError() : m_pos(0, 0), m_code(PCompiler::ERR_ERROR) {}
 	};
 
-	class CToken
-	{
-	public:
-		//перва€ литера символа
-		CTextPosition m_pos;
-		ETokenCode m_code;
-		const string *m_name;
-		union {
-			int nmb_int;
-			float nmb_float;
-			char one_symbol;
-		};
-		CToken() :m_pos(0, 0), m_code(PCompiler::ERR_TOKEN) {}
-	};
-
 	struct KeyWord 
 	{
-		ETokenCode code;
+		EKeyWord code;
 		string name;
 	};
 	vector<CError> m_ErrList;
-	vector<vector<KeyWord>> m_KeyWords;
-	map<char, ETokenCode> m_KeyCacheMap;
+	map<string, EKeyWord> m_KeyWords;
+	map<char, EOperator> m_KeyCacheMap;
 	CTextPosition m_curpos; 
 	char m_ch; // тикуща€ литера
 	CToken m_token; //текущий символ
-	istream &m_stream;
+	CTextPosition m_tokenpos;
 	string m_line;
+	string m_Code;
+	stringstream m_stream;
 	bool m_toStop;
 
 private:
 	void init();
 	
 public:
-	PCompiler(istream &stream);
+	PCompiler();
 	~PCompiler();
 
-	void Compile();
+	void Compile(const string &Code);
 private:
 	void error(CError Error);
 	//IO
@@ -84,17 +63,18 @@ private:
 	//lecsical
 	void nextToken();
 	void scanIdentKeyWord();
-	ETokenCode getCode(const string &name,const string *&pname);
+	bool IsKW(const string &ident, EKeyWord &kw) const;
 	void scanUIntFloatC(bool isNeg = false);
 	void scanUInt();
-	void scanCharC();
+	void scanString();
 	void removeComments(bool fromPar);
 	//syntactic
-	void accept(ETokenCode expected);
-	void accept(set<ETokenCode> expected);
-	set<ETokenCode> start(ETokenCode tokenCode);
-	set<ETokenCode> follow(ETokenCode tokenCode);
-	bool istoken(ETokenCode expected) const;
+
+	void accept(EKeyWord expected);
+	void accept(EOperator expected);
+	void acceptIdent();
+	void accept(EVarType expected);
+
 	void rule_program();
 	void rule_block();
 	void rule_labelpart();//<раздел меток>

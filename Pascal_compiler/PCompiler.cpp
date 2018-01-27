@@ -4,61 +4,61 @@
 void PCompiler::init()
 {
 	m_ErrList.reserve(ERR_MAX);
-	m_KeyWords.assign({
-		{{ifsy, "if"},
-		{dosy,"do"},
-		{ofsy, "of"},
-		{orsy, "or"},
-		{insy, "in"},
-		{tosy, "to"}},
-		{{endsy,"end" },
-		{ varsy,"var" },
-		{ divsy,"div" },
-		{andsy,"and"},
-		{notsy,"not"},
-		{forsy,"for"},
-		{modsy,"mod"},
-		{nilsy,"nil"},
-		{setsy,"set"}},
-		{{thensy,"then"},
-		{elsesy,"else"},
-		{casesy,"case"},
-		{filesy,"file"},
-		{fotosy,"foto"},
-		{typesy,"type"},
-		{withsy,"with"}},
-		{{beginsy,"begin"},
-		{whilesy,"while"},
-		{arraysy,"array"},
-		{constsy,"const"},
-		{labelsy,"label"},
-		{untilsy,"until"}},
-		{{downtosy,"downto"},
-		{packedsy,"packed"},
-		{recordsy,"record"},
-		{repeatsy,"repeat"}},
-		{{propgramsy,"propgram"}},
-		{{funcsy,"function"}},
-		{{procsy,"procedure"}}
+	m_KeyWords=map<string,EKeyWord>(
+		{{"if", ifsy},
+		{"do", dosy},
+		//{ofsy, "of"},
+		//{orsy, "or"},
+		//{insy, "in"},
+		//{tosy, "to"},
+		{"end", endsy},
+		{"var", varsy},
+		//{ divsy,"div" },
+		//{andsy,"and"},
+		//{notsy,"not"},
+		//{forsy,"for"},
+		//{modsy,"mod"},
+		//{nilsy,"nil"},
+		//{setsy,"set"},
+		{"then", thensy},
+		{"else", elsesy},
+		//{casesy,"case"},
+		//{filesy,"file"},
+		//{gotosy,"goto"},
+		{"type", typesy},
+		//{withsy,"with"},
+		{"begin", beginsy},
+		//{whilesy,"while"},
+		//{arraysy,"array"},
+		//{constsy,"const"},
+		//{labelsy,"label"},
+		//{untilsy,"until"},
+		//{downtosy,"downto"},
+		//{packedsy,"packed"},
+		//{recordsy,"record"},
+		//{repeatsy,"repeat"}},
+		{"program", propgramsy}
+		//{funcsy,"function"},
+		//{procsy,"procedure"}
 	});
-	m_KeyCacheMap = map<char, ETokenCode>({
+	m_KeyCacheMap = map<char, EOperator>({
 		{'*',star},
 		{'/',slash},
-		{'=',ETokenCode::equal},
+		{'=',EOperator::equal},
 		{',',comma},
 		{';',semicolon},
 		{'^',arrow},
 		{')',rightpar},
 		{'[',lbracket},
 		{']',rbracket},
-		{'+',ETokenCode::plus},
-		{'-',ETokenCode::minus}
+		{'+',EOperator::plus},
+		{'-',EOperator::minus}
 	});
 	m_toStop = false;
+	m_ch = '\0';
 }
 
-PCompiler::PCompiler(istream &stream):
-	m_stream(stream)
+PCompiler::PCompiler()
 {
 	init();
 }
@@ -67,10 +67,16 @@ PCompiler::~PCompiler()
 {
 }
 
-void PCompiler::Compile()
+void PCompiler::Compile(const string &Code)
 {
+	//m_Code = Code;
+	m_stream = stringstream(Code);
 	nextLiter();
-	rule_program();
+	//rule_program();
+	while (!m_toStop) {
+		nextToken();
+		cout << m_token.ToString() << '\n';
+	}
 }
 
 
@@ -94,56 +100,58 @@ void PCompiler::nextLiter()
 
 void PCompiler::nextToken()
 {
-	if (m_toStop)
+	if (m_toStop) {
+		m_token.m_str = "";
 		return;
+	}
 	while (m_ch == ' ' || m_ch == '\t') nextLiter();
-	m_token.m_pos = m_curpos;
+	m_tokenpos = m_curpos;
 	
 	
 	switch (m_ch)
 	{
 	case '\'':
-		scanCharC();
+		scanString();
 		break;
 	case '<':
 		nextLiter();
 		if (m_ch == '=') {
-			m_token.m_code = laterequal;
+			m_token.Change(laterequal);
 			nextLiter();
 		}
 		else if (m_ch == '>') {
-			m_token.m_code = latergrater;
+			m_token.Change(latergrater);
 			nextLiter();
 		}
 		else
-			m_token.m_code = later;
+			m_token.Change(later);
 		break;
 	case '>':
 		nextLiter();
 		if (m_ch == '=') {
-			m_token.m_code = graterequal;
+			m_token.Change(graterequal);
 			nextLiter();
 		}
 		else
-			m_token.m_code = greater;
+			m_token.Change(greater);
 		break;
 	case ':':
 		nextLiter();
 		if (m_ch == '=') {
-			m_token.m_code = assign;
+			m_token.Change(assign);
 			nextLiter();
 		}
 		else
-			m_token.m_code = colon;
+			m_token.Change(colon);
 		break;
 	case '.':
 		nextLiter();
 		if (m_ch == '.') {
-			m_token.m_code = twopoints;
+			m_token.Change(twopoints);
 			nextLiter();
 		}
 		else
-			m_token.m_code = point;
+			m_token.Change(point);
 		break;
 	case '(':
 		nextLiter();
@@ -153,7 +161,7 @@ void PCompiler::nextToken()
 			nextToken(); // ASK: Надо ли?
 		}
 		else
-			m_token.m_code = leftpar;
+			m_token.Change(leftpar);
 		break;
 	case '{':
 		removeComments(false);
@@ -167,7 +175,7 @@ void PCompiler::nextToken()
 		else {
 			auto iter = m_KeyCacheMap.find(m_ch);
 			if (iter != m_KeyCacheMap.end()) {
-				m_token.m_code = iter->second;
+				m_token.Change(iter->second);
 				nextLiter();
 			}
 			else
@@ -191,38 +199,40 @@ void PCompiler::scanIdentKeyWord()
 		name += m_ch;
 		nextLiter();
 	}
-	m_token.m_code = getCode(name, m_token.m_name);
-
+	//EKeyWord kw;
+	//if (IsKW(name, kw)) {
+	//	m_token.Change(kw);
+	//}
+	//else {
+	//	m_token.Change(name);
+	//}
+	m_token.Change(name);
 }
 
-ETokenCode PCompiler::getCode(const string & name,const string *&pname)
+bool PCompiler::IsKW(const string &ident, EKeyWord &kw) const
 {
-	if (name.size() == 1)
-		return ident;
-	auto &iter = find_if(
-		m_KeyWords[name.size() - 2].cbegin(),
-		m_KeyWords[name.size() - 2].cend(),
-		[&name](const KeyWord &keyword) {return keyword.name == name; });
-	if (iter != m_KeyWords[name.size() - 2].cend()) {
-		pname = &iter->name;
-		return iter->code;
+	auto iter = m_KeyWords.find(ident);
+	if (iter != m_KeyWords.cend()) {
+		kw = iter->second;
+		return true;
 	}
-	else
-		return ident;
+	return false;
 }
 
 void PCompiler::scanUIntFloatC(bool isNeg/* = false*/)
 {
 	scanUInt();
-	if (isNeg)
-		m_token.nmb_int = -m_token.nmb_int;
+	CIntVariant *val = dynamic_cast<CIntVariant*>(m_token.m_val);
+	if (isNeg) {
+		val->m_val = -val->m_val;
+	}
 	if (m_ch != '.') {
 		return;
 	}
 	nextLiter();
 	int maxlen = numeric_limits<float>::digits10;
 	int curlen(0);
-	float nmb_float((float)m_token.nmb_int), pow(0.1f);
+	float nmb_float((float)val->m_val), pow(0.1f);
 	while (m_ch >= '0' && m_ch <= '9'/* && curlen < maxlen*/) {
 		int digit = m_ch - '0';
 		nmb_float += digit*pow;
@@ -230,8 +240,7 @@ void PCompiler::scanUIntFloatC(bool isNeg/* = false*/)
 		curlen++;
 		nextLiter();
 	}
-	m_token.m_code = floatc;
-	m_token.nmb_float = nmb_float;
+	m_token.Change(new CFloatVariant(nmb_float));
 }
 
 void PCompiler::scanUInt()
@@ -247,18 +256,17 @@ void PCompiler::scanUInt()
 		}
 		nextLiter();
 	}
-	m_token.m_code = intc;
-	m_token.nmb_int = nmb_int;
+	m_token.Change(new CIntVariant(nmb_int));
 }
 
-void PCompiler::scanCharC()
+void PCompiler::scanString()
 {
 	nextLiter();
-	if (m_ch == '\'') {
-
+	string str("");
+	while (m_ch != '\'') {
+		str += m_ch;
 	}
-	m_token.m_code = charc;
-	m_token.one_symbol = m_ch;
+	m_token.Change(str);
 	nextLiter();
 }
 
@@ -284,6 +292,34 @@ void PCompiler::removeComments(bool fromPar)
 	}
 }
 
+void PCompiler::accept(EKeyWord expected)
+{
+	if (m_token.is(expected)) {
+		nextToken();
+	}
+}
+
+void PCompiler::accept(EOperator expected)
+{
+	if (m_token.is(expected)) {
+		nextToken();
+	}
+}
+
+void PCompiler::acceptIdent()
+{
+	if (m_token.isIdent()) {
+		nextToken();
+	}
+}
+
+void PCompiler::accept(EVarType expected)
+{
+	if (m_token.is(expected)) {
+		nextToken();
+	}
+}
+
 void PCompiler::ReadNextLine()
 {
 	if (m_stream.eof())
@@ -291,313 +327,13 @@ void PCompiler::ReadNextLine()
 	getline(m_stream, m_line);
 }
 
-void PCompiler::accept(ETokenCode expected)
-{
-	if (m_token.m_code == expected)
-		nextToken();
-	else
-		error(CError(m_curpos, ERR_ERROR/*TODO*/));
-}
-
-void PCompiler::accept(set<ETokenCode> expected)
-{
-	if (expected.count(m_token.m_code) > 0)
-		nextToken();
-	else
-		error(CError(m_curpos, ERR_ERROR/*TODO*/));
-}
-
-set<ETokenCode> PCompiler::start(ETokenCode tokenCode)
-{
-	switch (tokenCode)
-	{
-	case star:
-		break;
-	case slash:
-		break;
-	case ETokenCode::equal:
-		break;
-	case comma:
-		break;
-	case semicolon:
-		break;
-	case colon:
-		break;
-	case point:
-		break;
-	case arrow:
-		break;
-	case leftpar:
-		break;
-	case rightpar:
-		break;
-	case lbracket:
-		break;
-	case rbracket:
-		break;
-	case flpar:
-		break;
-	case frpar:
-		break;
-	case later:
-		break;
-	case greater:
-		break;
-	case laterequal:
-		break;
-	case graterequal:
-		break;
-	case latergrater:
-		break;
-	case ETokenCode::plus:
-		break;
-	case ETokenCode::minus:
-		break;
-	case lcomment:
-		break;
-	case rcomment:
-		break;
-	case assign:
-		break;
-	case twopoints:
-		break;
-	case ident:
-		break;
-	case floatc:
-		break;
-	case intc:
-		break;
-	case charc:
-		break;
-	case ifsy:
-		break;
-	case dosy:
-		break;
-	case ofsy:
-		break;
-	case orsy:
-		break;
-	case insy:
-		break;
-	case tosy:
-		break;
-	case endsy:
-		break;
-	case varsy:
-		break;
-	case divsy:
-		break;
-	case andsy:
-		break;
-	case notsy:
-		break;
-	case forsy:
-		break;
-	case modsy:
-		break;
-	case nilsy:
-		break;
-	case setsy:
-		break;
-	case thensy:
-		break;
-	case elsesy:
-		break;
-	case casesy:
-		break;
-	case filesy:
-		break;
-	case fotosy:
-		break;
-	case typesy:
-		break;
-	case withsy:
-		break;
-	case beginsy:
-		break;
-	case whilesy:
-		break;
-	case arraysy:
-		break;
-	case constsy:
-		break;
-	case labelsy:
-		break;
-	case untilsy:
-		break;
-	case downtosy:
-		break;
-	case packedsy:
-		break;
-	case recordsy:
-		break;
-	case repeatsy:
-		break;
-	case propgramsy:
-		break;
-	case funcsy:
-		break;
-	case procsy:
-		break;
-	case ERROR:
-		break;
-	default:
-		break;
-	}
-}
-
-set<ETokenCode> PCompiler::follow(ETokenCode tokenCode)
-{
-	switch (tokenCode)
-	{
-	case star:
-		break;
-	case slash:
-		break;
-	case ETokenCode::equal:
-		break;
-	case comma:
-		break;
-	case semicolon:
-		break;
-	case colon:
-		break;
-	case point:
-		break;
-	case arrow:
-		break;
-	case leftpar:
-		break;
-	case rightpar:
-		break;
-	case lbracket:
-		break;
-	case rbracket:
-		break;
-	case flpar:
-		break;
-	case frpar:
-		break;
-	case later:
-		break;
-	case greater:
-		break;
-	case laterequal:
-		break;
-	case graterequal:
-		break;
-	case latergrater:
-		break;
-	case ETokenCode::plus:
-		break;
-	case ETokenCode::minus:
-		break;
-	case lcomment:
-		break;
-	case rcomment:
-		break;
-	case assign:
-		break;
-	case twopoints:
-		break;
-	case ident:
-		break;
-	case floatc:
-		break;
-	case intc:
-		break;
-	case charc:
-		break;
-	case ifsy:
-		break;
-	case dosy:
-		break;
-	case ofsy:
-		break;
-	case orsy:
-		break;
-	case insy:
-		break;
-	case tosy:
-		break;
-	case endsy:
-		break;
-	case varsy:
-		return set<ETokenCode>({ procsy, funcsy, beginsy });
-	case divsy:
-		break;
-	case andsy:
-		break;
-	case notsy:
-		break;
-	case forsy:
-		break;
-	case modsy:
-		break;
-	case nilsy:
-		break;
-	case setsy:
-		break;
-	case thensy:
-		break;
-	case elsesy:
-		break;
-	case casesy:
-		break;
-	case filesy:
-		break;
-	case fotosy:
-		break;
-	case typesy:
-		return set<ETokenCode>({ varsy,procsy,funcsy, beginsy });
-	case withsy:
-		break;
-	case beginsy:
-		break;
-	case whilesy:
-		break;
-	case arraysy:
-		break;
-	case constsy:
-		return set<ETokenCode>({ varsy,procsy,funcsy, beginsy, typesy });
-		break;
-	case labelsy:
-		return set<ETokenCode>({ varsy,procsy,funcsy, beginsy, typesy, constsy });
-		break;
-	case untilsy:
-		break;
-	case downtosy:
-		break;
-	case packedsy:
-		break;
-	case recordsy:
-		break;
-	case repeatsy:
-		break;
-	case propgramsy:
-		break;
-	case funcsy:
-		break;
-	case procsy:
-		break;
-	case ERROR:
-		break;
-	default:
-		break;
-	}
-	return set<ETokenCode>();
-}
-
-bool PCompiler::istoken(ETokenCode expected) const
-{
-	return m_token.m_code == expected;
-}
-
 void PCompiler::rule_program()
 {
-	accept(propgramsy);
-	accept(ident);
-	accept(semicolon);
+	if (m_token.is(propgramsy)) {
+		nextToken();
+		acceptIdent();
+		accept(semicolon);
+	}
 	rule_block();
 	accept(point);
 }
@@ -614,9 +350,9 @@ void PCompiler::rule_block()
 
 void PCompiler::rule_labelpart()
 {
-	if (istoken(labelsy)) {
+	if (m_token.is(labelsy)) {
 		rule_label();
-		while (istoken(comma)) {
+		while (m_token.is(comma)) {
 			nextToken();
 			rule_label();
 		}
@@ -625,58 +361,58 @@ void PCompiler::rule_labelpart()
 
 void PCompiler::rule_label()
 {
-	accept(intc);
+	accept(intval);
 }
 
 void PCompiler::rule_constpart()
 {
-	if (istoken(constsy)) {
+	if (m_token.is(constsy)) {
 		do{
 			rule_constdecl();
 			accept(semicolon);
-		} while (istoken(ident));
+		} while (m_token.isIdent());
 	}
 }
 
 void PCompiler::rule_constdecl()
 {
-	accept(ident);
-	accept(ETokenCode::equal);
+	acceptIdent();
+	accept(EOperator::equal);
 	bool bNeg = false;
-	if (istoken(ETokenCode::minus)) {
+	if (m_token.is(EOperator::minus)) {
 		bNeg = true;
 		nextToken();
 	}
-	else if (istoken(ETokenCode::plus)) {
+	else if (m_token.is(EOperator::plus)) {
 		nextToken();
 	}
-	accept({ intc, floatc });
+	accept((EVarType)(intval | floatval));
 }
 
 void PCompiler::rule_typepart()
 {
-	if (istoken(typesy)) {
+	if (m_token.is(typesy)) {
 		error(CError(m_curpos, ERR_ERROR));
 	}
 }
 
 void PCompiler::rule_varpart()
 {
-	if (istoken(varsy)) {
+	if (m_token.is(varsy)) {
 		nextToken();
 		do {
 			rule_varDeclaration();
 			accept(semicolon);
-		} while (m_token.m_code == ident);
+		} while (m_token.isIdent());
 	}
 }
 
 void PCompiler::rule_varDeclaration()
 {
-	accept(ident);
-	while (istoken(comma)) {
+	acceptIdent();
+	while (m_token.is(comma)) {
 		nextToken();
-		accept(ident);
+		acceptIdent();
 	}
 	accept(colon);
 	rule_type();
@@ -691,7 +427,7 @@ void PCompiler::rule_compStatement()
 {
 	accept(beginsy);
 	rule_unlabeledStatement();
-	while (istoken(semicolon)) {
+	while (m_token.is(semicolon)) {
 		accept(semicolon);
 		rule_unlabeledStatement();
 	}
@@ -707,13 +443,22 @@ void PCompiler::rule_statement()
 
 }
 
+void PCompiler::rule_type()
+{
+	acceptIdent();
+}
+
 void PCompiler::rule_ifStatement()
 {
 	accept(ifsy);
 	rule_expression();
 	accept(thensy);
 	rule_statement();
-	if (istoken(elsesy)) {
+	if (m_token.is(elsesy)) {
 		rule_statement();
 	}
+}
+
+void PCompiler::rule_expression()
+{
 }
