@@ -3,9 +3,9 @@
 using namespace std;
 
 enum EVarType {
-	intval = 0x1,
-	floatval = 0x2,
-	stringval = 0x4
+	vtInt = 0x1,
+	vtReal = 0x2,
+	vtString = 0x4
 };
 class CVariant
 {
@@ -25,10 +25,10 @@ public:
 	string ToString() override;
 };
 
-class CFloatVariant : public CVariant {
+class CRealVariant : public CVariant {
 public:
 	float m_val;
-	CFloatVariant(float val);
+	CRealVariant(float val);
 	string ToString() override;
 };
 

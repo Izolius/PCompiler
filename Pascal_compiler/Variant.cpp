@@ -7,7 +7,7 @@ CVariant::CVariant(EVarType type) :
 }
 
 CIntVariant::CIntVariant(int val):
-	CVariant(intval), m_val(val)
+	CVariant(vtInt), m_val(val)
 {
 }
 
@@ -16,18 +16,18 @@ string CIntVariant::ToString()
 	return to_string(m_val);
 }
 
-CFloatVariant::CFloatVariant(float val):
-	CVariant(floatval), m_val(val)
+CRealVariant::CRealVariant(float val):
+	CVariant(vtReal), m_val(val)
 {
 }
 
-string CFloatVariant::ToString()
+string CRealVariant::ToString()
 {
 	return to_string(m_val);
 }
 
 CStringVariant::CStringVariant(string val):
-	CVariant(stringval), m_val(val)
+	CVariant(vtString), m_val(val)
 {
 }
 

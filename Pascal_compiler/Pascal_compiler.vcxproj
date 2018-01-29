@@ -145,11 +145,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="CLib.h" />
+    <ClInclude Include="Context.h" />
+    <ClInclude Include="Ident.h" />
     <ClInclude Include="PCompiler.h" />
     <ClInclude Include="Token.h" />
     <ClInclude Include="Variant.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Context.cpp" />
+    <ClCompile Include="Ident.cpp" />
     <ClCompile Include="PCompiler.cpp" />
     <ClCompile Include="Source.cpp" />
     <ClCompile Include="Token.cpp" />

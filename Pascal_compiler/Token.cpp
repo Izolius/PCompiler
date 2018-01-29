@@ -44,7 +44,7 @@ string CToken::ToString() const
 
 bool CToken::is(EOperator expected) const
 {
-	return m_type == Oper && m_op == expected;
+	return m_type == Oper && (m_op & expected) != 0;
 }
 
 bool CToken::is(EKeyWord expected) const
@@ -105,7 +105,7 @@ string CToken::to_string(EOperator oper)
 		return ">";
 	case laterequal:
 		return "<>";
-	case graterequal:
+	case greaterequal:
 		return ">=";
 	case latergrater:
 		return "<=";

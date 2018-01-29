@@ -9,8 +9,10 @@
 #include <sstream>
 #include <map>
 #include <set>
+#include <list>
 #include "Variant.h"
 #include "Token.h"
+#include "Context.h"
 #include "CLib.h"
 #include <algorithm>
 using namespace std;
@@ -46,6 +48,7 @@ class PCompiler
 	string m_Code;
 	stringstream m_stream;
 	bool m_toStop;
+	CContext *m_Context;
 
 private:
 	void init();
@@ -86,15 +89,23 @@ private:
 	void rule_varpart();//<раздел переменных>
 	void rule_varDeclaration();//<описание однотипных переменных>
 	void rule_procFuncPart();//<раздел процедур и функций>
+	void rule_funcDecl();
+	void rule_funcHeader();
 	void rule_statementPart();//<раздел операторов>
 	void rule_compStatement();//<составной оператор>
 	void rule_unlabeledStatement();//<непомеченый оператор>
 	void rule_statement();//<оператор>
 	void rule_simplStatement();//<простой оператор>
 	void rule_complexStatement();//<сложный оператор>
-	void rule_type();//<тип>
+	CTypeIdent *rule_type();//<тип>
 	void rule_ifStatement();//<условный оператор>
 	void rule_expression();//<выражение>
+	void rule_simpleExpression();//<простое выражение>
+	void rule_term();//<слагаемое>
+	void rule_factor();//множитель
+	//semantic
+	void openContext();
+	void closeContext();
 };
 
 #endif // !PCOMPILER_DEF

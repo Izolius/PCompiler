@@ -8,16 +8,16 @@ void PCompiler::init()
 		{{"if", ifsy},
 		{"do", dosy},
 		//{ofsy, "of"},
-		//{orsy, "or"},
+		{"or", orsy},
 		//{insy, "in"},
 		//{tosy, "to"},
 		{"end", endsy},
 		{"var", varsy},
-		//{ divsy,"div" },
-		//{andsy,"and"},
-		//{notsy,"not"},
+		{"div", divsy},
+		{"and", andsy},
+		{"not", notsy},
 		//{forsy,"for"},
-		//{modsy,"mod"},
+		{"mod", modsy},
 		//{nilsy,"nil"},
 		//{setsy,"set"},
 		{"then", thensy},
@@ -28,18 +28,18 @@ void PCompiler::init()
 		{"type", typesy},
 		//{withsy,"with"},
 		{"begin", beginsy},
-		//{whilesy,"while"},
-		//{arraysy,"array"},
-		//{constsy,"const"},
+		{"while", whilesy},
+		{"array", arraysy},
+		{"const", constsy},
 		//{labelsy,"label"},
 		//{untilsy,"until"},
 		//{downtosy,"downto"},
 		//{packedsy,"packed"},
 		//{recordsy,"record"},
 		//{repeatsy,"repeat"}},
-		{"program", propgramsy}
-		//{funcsy,"function"},
-		//{procsy,"procedure"}
+		{"program", propgramsy},
+		{"function", funcsy},
+		{"procedure", procsy}
 	});
 	m_KeyCacheMap = map<char, EOperator>({
 		{'*',star},
@@ -56,6 +56,7 @@ void PCompiler::init()
 	});
 	m_toStop = false;
 	m_ch = '\0';
+	m_Context = nullptr;
 }
 
 PCompiler::PCompiler()
@@ -72,11 +73,11 @@ void PCompiler::Compile(const string &Code)
 	//m_Code = Code;
 	m_stream = stringstream(Code);
 	nextLiter();
-	//rule_program();
-	while (!m_toStop) {
-		nextToken();
-		cout << m_token.ToString() << '\n';
-	}
+	rule_program();
+	//while (!m_toStop) {
+	//	nextToken();
+	//	cout << m_token.ToString() << '\n';
+	//}
 }
 
 
@@ -96,6 +97,8 @@ void PCompiler::nextLiter()
 		m_curpos.m_pos++;
 	}
 	m_ch = m_line[m_curpos.m_pos];
+	if (m_line == "")
+		nextLiter();
 }
 
 void PCompiler::nextToken()
@@ -129,7 +132,7 @@ void PCompiler::nextToken()
 	case '>':
 		nextLiter();
 		if (m_ch == '=') {
-			m_token.Change(graterequal);
+			m_token.Change(greaterequal);
 			nextLiter();
 		}
 		else
@@ -192,21 +195,22 @@ void PCompiler::nextToken()
 void PCompiler::scanIdentKeyWord()
 {
 	string name = "";
-	while (m_ch >= 'a' && m_ch <= 'z' ||
+	size_t line = m_curpos.m_line;
+	while ((m_ch >= 'a' && m_ch <= 'z' ||
 		m_ch >= 'A' && m_ch <= 'Z' ||
-		m_ch >= '0' && m_ch <= '9')
+		m_ch >= '0' && m_ch <= '9') && line == m_curpos.m_line)
 	{
 		name += m_ch;
 		nextLiter();
 	}
-	//EKeyWord kw;
-	//if (IsKW(name, kw)) {
-	//	m_token.Change(kw);
-	//}
-	//else {
-	//	m_token.Change(name);
-	//}
-	m_token.Change(name);
+	EKeyWord kw;
+	if (IsKW(name, kw)) {
+		m_token.Change(kw);
+	}
+	else {
+		m_token.Change(name);
+	}
+	//m_token.Change(name);
 }
 
 bool PCompiler::IsKW(const string &ident, EKeyWord &kw) const
@@ -240,7 +244,7 @@ void PCompiler::scanUIntFloatC(bool isNeg/* = false*/)
 		curlen++;
 		nextLiter();
 	}
-	m_token.Change(new CFloatVariant(nmb_float));
+	m_token.Change(new CRealVariant(nmb_float));
 }
 
 void PCompiler::scanUInt()
@@ -329,23 +333,31 @@ void PCompiler::ReadNextLine()
 
 void PCompiler::rule_program()
 {
+	openContext();
+	nextToken();
 	if (m_token.is(propgramsy)) {
 		nextToken();
 		acceptIdent();
 		accept(semicolon);
 	}
 	rule_block();
+	closeContext();
 	accept(point);
+	if (m_ErrList.size() == 0) {
+		cout << "hello world!" << endl;
+	}
 }
 
 void PCompiler::rule_block()
 {
+	openContext();
 	rule_labelpart();
 	rule_constpart();
 	rule_typepart();
 	rule_varpart();
-	//rule_procfuncpart();
+	rule_procFuncPart();
 	rule_statementPart();
+	closeContext();
 }
 
 void PCompiler::rule_labelpart()
@@ -361,7 +373,7 @@ void PCompiler::rule_labelpart()
 
 void PCompiler::rule_label()
 {
-	accept(intval);
+	accept(vtInt);
 }
 
 void PCompiler::rule_constpart()
@@ -386,7 +398,7 @@ void PCompiler::rule_constdecl()
 	else if (m_token.is(EOperator::plus)) {
 		nextToken();
 	}
-	accept((EVarType)(intval | floatval));
+	accept((EVarType)(vtInt | vtReal));
 }
 
 void PCompiler::rule_typepart()
@@ -409,43 +421,150 @@ void PCompiler::rule_varpart()
 
 void PCompiler::rule_varDeclaration()
 {
+	list<CVarIdent*> vars;
+	auto addvar = [&]() {
+		if (m_token.isIdent()) {
+			CVarIdent *var = m_Context->findV(m_token.ToString());
+			if (var) {
+				error(CError());
+			}
+			else {
+				var = new CVarIdent(m_token.ToString());
+				m_Context->add(var);
+				vars.push_back(var);
+			}
+		}
+	};
+	addvar();
 	acceptIdent();
 	while (m_token.is(comma)) {
 		nextToken();
+		addvar();
 		acceptIdent();
 	}
 	accept(colon);
-	rule_type();
+	CTypeIdent *type = rule_type();
+	accept(semicolon);
+	if (type) {
+		for (CVarIdent *var : vars) {
+			var->m_type = type;
+		}
+	}
+}
+
+void PCompiler::rule_procFuncPart()
+{
+	if (m_token.is(funcsy)) {
+		rule_funcDecl();
+	}
+	else if (m_token.is(procsy)) {
+		//rule_procDecl();
+	}
+}
+
+void PCompiler::rule_funcDecl()
+{
+	rule_funcHeader();
+	rule_block();
+}
+
+void PCompiler::rule_funcHeader()
+{
+	accept(funcsy);
+	if (m_token.isIdent()) {
+		nextToken();
+	}
+	else {
+		error(CError());
+	}
+	if (m_token.is(colon)) {
+		nextToken();
+	}
+	else if (m_token.is(leftpar)) {
+		//TODO
+	}
+	acceptIdent();
 }
 
 void PCompiler::rule_statementPart()
 {
-	rule_compStatement();
-}
-
-void PCompiler::rule_compStatement()
-{
 	accept(beginsy);
-	rule_unlabeledStatement();
-	while (m_token.is(semicolon)) {
-		accept(semicolon);
-		rule_unlabeledStatement();
-	}
-}
-
-void PCompiler::rule_unlabeledStatement()
-{
 	rule_statement();
+	while (m_token.is(semicolon)) {
+		nextToken();
+		rule_statement();
+	}
+	accept(endsy);
 }
 
 void PCompiler::rule_statement()
 {
-
+	if (m_token.isIdent()) {
+		CIdent *ident = m_Context->find(m_token.ToString());
+		if (ident == nullptr) {
+			error(CError());
+		}
+		if (ident->m_type == itVar) {
+			nextToken();
+			accept(assign);
+			rule_expression();
+			return;
+		}
+		if (ident->m_type == itProc) {
+			nextToken();
+			if (m_token.is(leftpar)) {
+				nextToken();
+				rule_expression();
+				while (m_token.is(comma)) {
+					rule_expression();
+				}
+				accept(rightpar);
+			}
+			return;
+		}
+		error(CError());
+		return;
+	}
+	if (m_token.is(beginsy)) {
+		nextToken();
+		rule_statement();
+		while (m_token.is(semicolon)) {
+			nextToken();
+			rule_statement();
+		}
+		accept(endsy);
+		return;
+	}
+	if (m_token.is(ifsy)) {
+		nextToken();
+		rule_expression();
+		accept(thensy);
+		rule_statement();
+		if (m_token.is(elsesy)) {
+			nextToken();
+			rule_statement();
+		}
+		return;
+	}
+	if (m_token.is(whilesy)) {
+		nextToken();
+		rule_expression();
+		accept(dosy);
+		rule_statement();
+		return;
+	}
 }
 
-void PCompiler::rule_type()
+CTypeIdent *PCompiler::rule_type()
 {
+	CTypeIdent *res = nullptr;
+	if (m_token.isIdent()) {
+		if (!(res = m_Context->findT(m_token.ToString()))) {
+			error(CError());
+		}
+	}
 	acceptIdent();
+	return res;
 }
 
 void PCompiler::rule_ifStatement()
@@ -461,4 +580,137 @@ void PCompiler::rule_ifStatement()
 
 void PCompiler::rule_expression()
 {
+	rule_simpleExpression();
+	if (m_token.is(EOperator(EOperator::equal | later | greater |
+		latergrater | laterequal | greaterequal))) {
+		nextToken();
+		rule_simpleExpression();
+	}
+}
+
+void PCompiler::rule_simpleExpression()
+{
+	if (m_token.is(EOperator::plus)) {
+		nextToken();
+	}
+	else if (m_token.is(EOperator::minus)) {
+		nextToken();
+	}
+	rule_term();
+	bool op;
+	do {
+		op = false;
+		if (m_token.is(EOperator::plus)) {
+			nextToken();
+			rule_term();
+			op = true;
+		}
+		else if (m_token.is(EOperator::minus)) {
+			nextToken();
+			rule_term();
+			op = true;
+		}
+		else if (m_token.is(orsy)) {
+			nextToken();
+			rule_term();
+			op = true;
+		}
+	} while (op);
+}
+
+void PCompiler::rule_term()
+{
+	rule_factor();
+	bool op;
+	do {
+		op = false;
+		if (m_token.is(star)) {
+			nextToken();
+			rule_factor();
+			op = true;
+		}
+		else if (m_token.is(slash)) {
+			nextToken();
+			rule_factor();
+			op = true;
+		}
+		else if (m_token.is(divsy)) {
+			nextToken();
+			rule_factor();
+			op = true;
+		}
+		else if (m_token.is(modsy)) {
+			nextToken();
+			rule_factor();
+			op = true;
+		}
+		else if (m_token.is(andsy)) {
+			nextToken();
+			rule_factor();
+			op = true;
+		}
+	} while (op);
+	
+	//error(CError());
+}
+
+void PCompiler::rule_factor()
+{
+	if (m_token.is(EVarType(vtInt | vtReal))) {
+		nextToken();
+		return;
+	}
+	if (m_token.is(leftpar)) {
+		nextToken();
+		rule_expression();
+		accept(rightpar);
+		return;
+	}
+	if (m_token.is(notsy)) {
+		nextToken();
+		rule_factor();
+		return;
+	}
+	if (m_token.isIdent()) {
+		CIdent *ident = m_Context->find(m_token.ToString());
+		if (!ident) {
+			error(CError());
+		}
+		if (ident->m_type == itVar) {
+			nextToken();
+			return;
+		}
+		if (ident->m_type == itFunc) {
+			nextToken();
+			if (m_token.is(leftpar)) {
+				rule_expression();
+				while (m_token.is(comma)) {
+					rule_expression();
+				}
+				accept(rightpar);
+			}
+			return;
+		}
+		error(CError());
+		return;
+	}
+	error(CError());
+}
+
+void PCompiler::openContext()
+{
+	if (m_Context) {
+		CContext *cur = new CContext(m_Context);
+		m_Context = cur;
+	}
+	else {
+		m_Context = new CContext();
+	}
+}
+
+void PCompiler::closeContext()
+{
+	CContext *parent = m_Context->parent();
+	delete m_Context;
+	m_Context = parent;
 }
