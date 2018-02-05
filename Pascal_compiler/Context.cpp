@@ -31,15 +31,7 @@ void CContext::add(CIdent * ident)
 
 CTypeIdent * CContext::findT(string type, bool brec) const
 {
-	auto iter = find_if(m_types.begin(), m_types.end(),
-		[&type](const CTypeIdent *ptype) {return ptype->m_name == type; });
-	if (iter != m_types.end()) {
-		return *iter;
-	}
-	else if (brec && m_parent) {
-		return m_parent->findT(type, brec);
-	}
-	return nullptr;
+	return dynamic_cast<CTypeIdent*>(find(type, brec));
 }
 
 CVarIdent * CContext::findV(string var, bool brec) const

@@ -1,8 +1,13 @@
 program aaa;
 var
 	a,b,c: integer;
-begin
-	a:=1;
-	b:=0.0;
-	c:=(-a+b)*c;	
+begin	
+	if a=1 then 
+		if b=0 then
+			c:=1;
+		else
+			c:=0;
+	else
+		a:=9;
+
 end.

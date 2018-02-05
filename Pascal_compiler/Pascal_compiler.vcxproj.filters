@@ -33,6 +33,9 @@
     <ClInclude Include="Ident.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TypeUtility.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="PCompiler.cpp">
@@ -51,6 +54,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Ident.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="TypeUtility.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

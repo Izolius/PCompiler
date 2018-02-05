@@ -149,6 +149,7 @@
     <ClInclude Include="Ident.h" />
     <ClInclude Include="PCompiler.h" />
     <ClInclude Include="Token.h" />
+    <ClInclude Include="TypeUtility.h" />
     <ClInclude Include="Variant.h" />
   </ItemGroup>
   <ItemGroup>
@@ -157,6 +158,7 @@
     <ClCompile Include="PCompiler.cpp" />
     <ClCompile Include="Source.cpp" />
     <ClCompile Include="Token.cpp" />
+    <ClCompile Include="TypeUtility.cpp" />
     <ClCompile Include="Variant.cpp" />
   </ItemGroup>
   <ItemGroup>

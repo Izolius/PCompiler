@@ -1,10 +1,11 @@
 #include "PCompiler.h"
+#include "TypeUtility.h"
 
 
 void PCompiler::init()
 {
 	m_ErrList.reserve(ERR_MAX);
-	m_KeyWords=map<string,EKeyWord>(
+	m_KeyWords=map<string,EOperator>(
 		{{"if", ifsy},
 		{"do", dosy},
 		//{ofsy, "of"},
@@ -203,7 +204,7 @@ void PCompiler::scanIdentKeyWord()
 		name += m_ch;
 		nextLiter();
 	}
-	EKeyWord kw;
+	EOperator kw;
 	if (IsKW(name, kw)) {
 		m_token.Change(kw);
 	}
@@ -213,7 +214,7 @@ void PCompiler::scanIdentKeyWord()
 	//m_token.Change(name);
 }
 
-bool PCompiler::IsKW(const string &ident, EKeyWord &kw) const
+bool PCompiler::IsKW(const string &ident, EOperator &kw) const
 {
 	auto iter = m_KeyWords.find(ident);
 	if (iter != m_KeyWords.cend()) {
@@ -296,16 +297,23 @@ void PCompiler::removeComments(bool fromPar)
 	}
 }
 
-void PCompiler::accept(EKeyWord expected)
+void PCompiler::accept(EOperator expected)
 {
 	if (m_token.is(expected)) {
 		nextToken();
 	}
 }
 
-void PCompiler::accept(EOperator expected)
+void PCompiler::accept(initializer_list<EOperator> expected)
 {
 	if (m_token.is(expected)) {
+		nextToken();
+	}
+}
+
+void PCompiler::accept(initializer_list<EOperator> expected, EOperator & res)
+{
+	if (m_token.is(expected, res)) {
 		nextToken();
 	}
 }
@@ -343,8 +351,8 @@ void PCompiler::rule_program()
 	rule_block();
 	closeContext();
 	accept(point);
-	if (m_ErrList.size() == 0) {
-		cout << "hello world!" << endl;
+	for (const CError &err : m_ErrList) {
+		cout << err.m_pos.m_line << ' ' << err.m_pos.m_pos << endl;
 	}
 }
 
@@ -426,7 +434,7 @@ void PCompiler::rule_varDeclaration()
 		if (m_token.isIdent()) {
 			CVarIdent *var = m_Context->findV(m_token.ToString());
 			if (var) {
-				error(CError());
+				error(CError(m_curpos, ERR_ERROR));
 			}
 			else {
 				var = new CVarIdent(m_token.ToString());
@@ -475,7 +483,7 @@ void PCompiler::rule_funcHeader()
 		nextToken();
 	}
 	else {
-		error(CError());
+		error(CError(m_curpos, ERR_ERROR));
 	}
 	if (m_token.is(colon)) {
 		nextToken();
@@ -502,12 +510,13 @@ void PCompiler::rule_statement()
 	if (m_token.isIdent()) {
 		CIdent *ident = m_Context->find(m_token.ToString());
 		if (ident == nullptr) {
-			error(CError());
+			error(CError(m_curpos, ERR_ERROR));
 		}
 		if (ident->m_type == itVar) {
 			nextToken();
 			accept(assign);
 			rule_expression();
+			accept(semicolon);
 			return;
 		}
 		if (ident->m_type == itProc) {
@@ -522,7 +531,7 @@ void PCompiler::rule_statement()
 			}
 			return;
 		}
-		error(CError());
+		error(CError(m_curpos, ERR_ERROR));
 		return;
 	}
 	if (m_token.is(beginsy)) {
@@ -559,8 +568,8 @@ CTypeIdent *PCompiler::rule_type()
 {
 	CTypeIdent *res = nullptr;
 	if (m_token.isIdent()) {
-		if (!(res = m_Context->findT(m_token.ToString()))) {
-			error(CError());
+		if (!(res = static_cast<CTypeIdent*>(m_Context->find(m_token.ToString())))) {
+			error(CError(m_curpos, ERR_ERROR));
 		}
 	}
 	acceptIdent();
@@ -578,17 +587,21 @@ void PCompiler::rule_ifStatement()
 	}
 }
 
-void PCompiler::rule_expression()
+CTypeIdent *PCompiler::rule_expression()
 {
-	rule_simpleExpression();
-	if (m_token.is(EOperator(EOperator::equal | later | greater |
-		latergrater | laterequal | greaterequal))) {
+	CTypeIdent *left, *right;
+	EOperator op;
+	left = rule_simpleExpression();
+	if (m_token.is({ EOperator::equal, later, greater,
+		latergrater, laterequal, greaterequal }, op)) {
 		nextToken();
-		rule_simpleExpression();
+		right = rule_simpleExpression();
+		return (CTypeUtility::Compatable(left, right) ? m_Context->findT("boolean") : nullptr);
 	}
+	return left;
 }
 
-void PCompiler::rule_simpleExpression()
+CTypeIdent *PCompiler::rule_simpleExpression()
 {
 	if (m_token.is(EOperator::plus)) {
 		nextToken();
@@ -596,91 +609,88 @@ void PCompiler::rule_simpleExpression()
 	else if (m_token.is(EOperator::minus)) {
 		nextToken();
 	}
-	rule_term();
+	CTypeIdent *left, *right;
+	EOperator oper;
+	left = rule_term();
 	bool op;
 	do {
 		op = false;
-		if (m_token.is(EOperator::plus)) {
+		if (m_token.is({ EOperator::plus, EOperator::minus, orsy }, oper)) {
 			nextToken();
-			rule_term();
+			right = rule_term();
 			op = true;
-		}
-		else if (m_token.is(EOperator::minus)) {
-			nextToken();
-			rule_term();
-			op = true;
-		}
-		else if (m_token.is(orsy)) {
-			nextToken();
-			rule_term();
-			op = true;
+			left = CTypeUtility::Result(left, oper, right);
+			if (left->isT(ttError))
+				error(CError(m_curpos, ERR_ERROR));
 		}
 	} while (op);
+	return left;
 }
 
-void PCompiler::rule_term()
+CTypeIdent *PCompiler::rule_term()
 {
-	rule_factor();
+	CTypeIdent *left, *right;
+	left = rule_factor();
 	bool op;
+	EOperator oper;
 	do {
 		op = false;
-		if (m_token.is(star)) {
+		if (m_token.is({ star, slash, divsy, modsy, andsy }, oper)) {
 			nextToken();
-			rule_factor();
-			op = true;
-		}
-		else if (m_token.is(slash)) {
-			nextToken();
-			rule_factor();
-			op = true;
-		}
-		else if (m_token.is(divsy)) {
-			nextToken();
-			rule_factor();
-			op = true;
-		}
-		else if (m_token.is(modsy)) {
-			nextToken();
-			rule_factor();
-			op = true;
-		}
-		else if (m_token.is(andsy)) {
-			nextToken();
-			rule_factor();
+			right = rule_factor();
+			left = CTypeUtility::Result(left, oper, right, m_Context);
+			if (left->isT(ttError)) {
+				error(CError(m_curpos, ERR_ERROR));
+			}
 			op = true;
 		}
 	} while (op);
-	
-	//error(CError());
+	return left;
 }
 
-void PCompiler::rule_factor()
+CTypeIdent *PCompiler::rule_factor()
 {
-	if (m_token.is(EVarType(vtInt | vtReal))) {
+	CTypeIdent *left(m_Context->findT("")), *right;
+	if (m_token.is({ vtInt , vtReal })) {
+		if (m_token.is(vtInt))
+			left = m_Context->findT("int");
+		else
+			left = m_Context->findT("real");
 		nextToken();
-		return;
+		return left;
 	}
 	if (m_token.is(leftpar)) {
 		nextToken();
-		rule_expression();
+		left = rule_expression();
 		accept(rightpar);
-		return;
+		return left;
 	}
 	if (m_token.is(notsy)) {
 		nextToken();
-		rule_factor();
+		left = rule_factor();
+		left = CTypeUtility::Result(left, notsy);
+		if (left->isT(ttError)) {
+			error(CError(m_curpos, ERR_ERROR));
+		}
 		return;
 	}
 	if (m_token.isIdent()) {
 		CIdent *ident = m_Context->find(m_token.ToString());
 		if (!ident) {
-			error(CError());
-		}
-		if (ident->m_type == itVar) {
-			nextToken();
+			error(CError(m_curpos, ERR_ERROR));
 			return;
 		}
+		if (ident->m_type == itVar) {
+			if (auto var = dynamic_cast<CVarIdent*>(ident)) {
+				left = var->m_type;
+			}
+			nextToken();
+			return left;
+		}
 		if (ident->m_type == itFunc) {
+			if (auto func = dynamic_cast<CFuncIdent*>(ident)) {
+				left = func->m_restype;
+			}
 			nextToken();
 			if (m_token.is(leftpar)) {
 				rule_expression();
@@ -689,12 +699,13 @@ void PCompiler::rule_factor()
 				}
 				accept(rightpar);
 			}
-			return;
+			return left;
 		}
-		error(CError());
-		return;
+		error(CError(m_curpos, ERR_ERROR));
+		return nullptr;
 	}
-	error(CError());
+	error(CError(m_curpos, ERR_ERROR));
+	return nullptr;
 }
 
 void PCompiler::openContext()

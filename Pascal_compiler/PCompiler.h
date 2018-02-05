@@ -34,11 +34,11 @@ class PCompiler
 
 	struct KeyWord 
 	{
-		EKeyWord code;
+		EOperator code;
 		string name;
 	};
 	vector<CError> m_ErrList;
-	map<string, EKeyWord> m_KeyWords;
+	map<string, EOperator> m_KeyWords;
 	map<char, EOperator> m_KeyCacheMap;
 	CTextPosition m_curpos; 
 	char m_ch; // тикущая литера
@@ -66,15 +66,16 @@ private:
 	//lecsical
 	void nextToken();
 	void scanIdentKeyWord();
-	bool IsKW(const string &ident, EKeyWord &kw) const;
+	bool IsKW(const string &ident, EOperator &kw) const;
 	void scanUIntFloatC(bool isNeg = false);
 	void scanUInt();
 	void scanString();
 	void removeComments(bool fromPar);
 	//syntactic
 
-	void accept(EKeyWord expected);
 	void accept(EOperator expected);
+	void accept(initializer_list<EOperator> expected);
+	void accept(initializer_list<EOperator> expected, EOperator &res);
 	void acceptIdent();
 	void accept(EVarType expected);
 
@@ -99,10 +100,10 @@ private:
 	void rule_complexStatement();//<сложный оператор>
 	CTypeIdent *rule_type();//<тип>
 	void rule_ifStatement();//<условный оператор>
-	void rule_expression();//<выражение>
-	void rule_simpleExpression();//<простое выражение>
-	void rule_term();//<слагаемое>
-	void rule_factor();//множитель
+	CTypeIdent *rule_expression();//<выражение>
+	CTypeIdent *rule_simpleExpression();//<простое выражение>
+	CTypeIdent *rule_term();//<слагаемое>
+	CTypeIdent *rule_factor();//множитель
 	//semantic
 	void openContext();
 	void closeContext();

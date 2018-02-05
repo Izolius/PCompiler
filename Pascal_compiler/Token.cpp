@@ -13,13 +13,6 @@ void CToken::Change(EOperator op)
 	m_str = to_string(op);
 }
 
-void CToken::Change(EKeyWord kw)
-{
-	ClearVal();
-	m_type = KeyWord;
-	m_kw = kw;
-}
-
 void CToken::Change(string ident)
 {
 	ClearVal();
@@ -44,12 +37,29 @@ string CToken::ToString() const
 
 bool CToken::is(EOperator expected) const
 {
-	return m_type == Oper && (m_op & expected) != 0;
+	return m_type == Oper && m_op == expected;
 }
 
-bool CToken::is(EKeyWord expected) const
+bool CToken::is(initializer_list<EOperator> expected) const
 {
-	return m_type == KeyWord && m_kw == expected;
+	if (m_type != Oper)
+		return false;
+	for (EOperator op : expected)
+		if (op == m_op)
+			return true;
+	return false;
+}
+
+bool CToken::is(initializer_list<EOperator> expected, EOperator & res) const
+{
+	if (m_type != Oper)
+		return false;
+	for (EOperator op : expected)
+		if (op == m_op) {
+			res = op;
+			return true;
+		}
+	return false;
 }
 
 bool CToken::isIdent() const
@@ -64,7 +74,17 @@ bool CToken::isValue() const
 
 bool CToken::is(EVarType type) const
 {
-	return isValue() && (m_val->T & type) != 0;
+	return isValue() && m_val->T == type;
+}
+
+bool CToken::is(initializer_list<EVarType> type) const
+{
+	if (!isValue())
+		return false;
+	for (EVarType tp : type)
+		if (tp == m_val->T)
+			return true;
+	return false;
 }
 
 string CToken::to_string(EOperator oper)

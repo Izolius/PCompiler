@@ -3,45 +3,43 @@
 #include "CLib.h"
 #include "Variant.h"
 #include <string>
+#include <set>
 using namespace std;
 
 enum ETokenType {
 	Oper,
 	Ident,
-	Value,
-	KeyWord
+	Value
 };
 
-enum EOperator : long {
-	star = 0x1, // *
+enum EOperator {
+	star, // *
 	//sharp, // #
-	slash = 0x2, // /
-	equal = 0x4, // =
-	comma = 0x8, // ,
-	semicolon = 0x10, // ;
-	colon = 0x20, // :
-	point = 0x40, // .
-	arrow = 0x80, // ^
-	leftpar = 0x100, // (
-	rightpar = 0x200, // )
-	lbracket = 0x400, // [
-	rbracket = 0x800, // ]
-	flpar = 0x1000, // {
-	frpar = 0x2000, // }
-	later = 0x4000, // <
-	greater = 0x8000, // >
-	laterequal = 0x10000, // <>
-	greaterequal = 0x20000, // >=
-	latergrater = 0x40000, // <=
-	plus = 0x80000, // +
-	minus = 0x100000, // -
-	lcomment = 0x200000, // (*
-	rcomment = 0x400000, // *)
-	assign = 0x800000, // :=
-	twopoints = 0x1000000// ..
-};
+	slash, // /
+	equal, // =
+	comma, // ,
+	semicolon, // ;
+	colon, // :
+	point, // .
+	arrow, // ^
+	leftpar, // (
+	rightpar, // )
+	lbracket, // [
+	rbracket, // ]
+	flpar, // {
+	frpar, // }
+	later, // <
+	greater, // >
+	laterequal, // <>
+	greaterequal, // >=
+	latergrater, // <=
+	plus, // +
+	minus, // -
+	lcomment, // (*
+	rcomment, // *)
+	assign, // :=
+	twopoints, // ..
 
-enum EKeyWord {
 	ifsy,
 	dosy,
 	ofsy,
@@ -85,23 +83,23 @@ public:
 	ETokenType m_type;
 	union {
 		EOperator m_op;
-		EKeyWord m_kw;
 		CVariant *m_val;
 	};
 	string m_str;
 	CToken() {}
 	~CToken();
 	void Change(EOperator op);
-	void Change(EKeyWord kw);
 	void Change(string ident);
 	void Change(CVariant *val);
 	string ToString() const;
 
 	bool is(EOperator expected) const;
-	bool is(EKeyWord expected) const;
+	bool is(initializer_list<EOperator> expected) const;
+	bool is(initializer_list<EOperator> expected, EOperator &res) const;
 	bool isIdent() const;
 	bool isValue() const;
 	bool is(EVarType type) const;
+	bool is(initializer_list<EVarType> type) const;
 
 	static string to_string(EOperator oper);
 private:
