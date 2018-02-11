@@ -27,22 +27,26 @@ enum ETypeType {
 	ttEnum = 0x40,
 	ttLimited = 0x80,
 	ttError = 0x100,
+	ttProc = 0x200,
+	ttFunc = 0x400,
 
 	ttScalar = ttInt | ttChar | ttReal | ttBoolean
 };
 
 class CVarIdent;
+class CTypeIdent;
 class CEnumConstIdent;
 class CEnumTypeIdent;
 
 class CIdent
 {
-	virtual void func();
 public:
-	string m_name;
 	EIdentType m_type;
+	string m_name;
 	CIdent(const string &name);
 	CIdent(const string &name, EIdentType type);
+	virtual const CTypeIdent *type() const = 0;
+	virtual const string &name() const;
 	~CIdent();
 };
 
@@ -53,38 +57,39 @@ public:
 	const ETypeType &T;
 	bool isT(ETypeType type) const;
 	bool isT(initializer_list<ETypeType> types) const;
-	bool isEqual(const CTypeIdent *type);
+	virtual bool isEqual(const CTypeIdent *type) const;
 	virtual bool isOrdered() const { return false; }
-	virtual bool contain(CTypeIdent *ptype) const { return false; }
+	virtual bool contain(const CTypeIdent *ptype) const;
+	virtual const CTypeIdent *type() const override;
 protected:
 	CTypeIdent(const string &name, ETypeType type);
 };
 
-class CSimpleTypeIdent: public CTypeIdent
-{
-protected:
-	CSimpleTypeIdent(const string &name, ETypeType type);
-};
-
-class CIntTypeIdent: public CSimpleTypeIdent
+class CIntTypeIdent: public CTypeIdent
 {
 public:
-	CIntTypeIdent() :CSimpleTypeIdent("integer", ttInt) {}
+	CIntTypeIdent() :CTypeIdent("integer", ttInt) {}
 	virtual bool isOrdered() const override { return true; }
 };
 
-class CCharTypeIdent : public CSimpleTypeIdent
+class CCharTypeIdent : public CTypeIdent
 {
 public:
-	CCharTypeIdent() :CSimpleTypeIdent("char", ttChar) {}
+	CCharTypeIdent() :CTypeIdent("char", ttChar) {}
 	virtual bool isOrdered() const override { return true; }
 };
 
-class CRealTypeIdent : public CSimpleTypeIdent
+class CRealTypeIdent : public CTypeIdent
 {
 public:
-	CRealTypeIdent() :CSimpleTypeIdent("real", ttReal) {}
-	virtual bool contain(CTypeIdent *ptype) const override;
+	CRealTypeIdent() :CTypeIdent("real", ttReal) {}
+	virtual bool contain(const CTypeIdent *ptype) const override;
+};
+
+class CBooleanTypeIdent : public CTypeIdent
+{
+public:
+	CBooleanTypeIdent() :CTypeIdent("boolean", ttBoolean) {}
 };
 
 class CStringTypeIdent : public CTypeIdent
@@ -100,16 +105,30 @@ public:
 	CErrorTypeIdent() :CTypeIdent("", ttError) {}
 };
 
-class CEnumTypeIdent : public CSimpleTypeIdent
+class CEnumTypeIdent : public CTypeIdent
 {
 public:
 	const vector<CEnumConstIdent*> m_vals;
-	CEnumTypeIdent(const string &name, const vector<CEnumConstIdent*> &Enum);
+	CEnumTypeIdent(const vector<CEnumConstIdent*> &Enum);
 	virtual bool isOrdered() const override { return true; }
-	virtual bool contain(CTypeIdent *ptype) const override;
+	virtual bool contain(const CTypeIdent *ptype) const override;
+};
+//
+//class CBooleanTypeIdent : public CEnumTypeIdent
+//{
+//	CBooleanTypeIdent();
+//};
+
+class CBasedTypeIdent
+{
+protected:
+	const CTypeIdent *m_base;
+public:
+	CBasedTypeIdent(const CTypeIdent *base);
+	const CTypeIdent *base() const;
 };
 
-class CLimitedTypeIdent : public CTypeIdent
+class CLimitedTypeIdent : public CTypeIdent, public CBasedTypeIdent
 {
 	enum EConstType {
 		ctEnum,
@@ -122,44 +141,96 @@ class CLimitedTypeIdent : public CTypeIdent
 		const int m_ifrom, m_ito;
 		const unsigned char m_cfrom, m_cto;
 	};
-	CTypeIdent *m_base;
 public:
-	CLimitedTypeIdent(const string &name, CEnumConstIdent *from, CEnumConstIdent *to, CTypeIdent *base);
-	CLimitedTypeIdent(const string &name, int from, int to, CTypeIdent *base);
-	CLimitedTypeIdent(const string &name, unsigned char from, unsigned char to, CTypeIdent *base);
+	CLimitedTypeIdent(const CEnumConstIdent *from, const CEnumConstIdent *to, const CTypeIdent *base);
+	CLimitedTypeIdent(int from, int to, const CTypeIdent *base);
+	CLimitedTypeIdent(unsigned char from, unsigned char to, const CTypeIdent *base);
 	int pos(const CEnumConstIdent *val) const;
 	int pos(int val) const;
 	int pos(unsigned char val) const;
-	CTypeIdent *base() const;
 	virtual bool isOrdered() const override { return true; }
-	virtual bool contain(CTypeIdent *ptype) const override;
+	virtual bool contain(const CTypeIdent *ptype) const override;
 };
 
-class CVarIdent : public CIdent
+class CArrayTypeIdent : public CTypeIdent, public CBasedTypeIdent
+{
+	const vector<const CTypeIdent *> m_indexes;
+public:
+	CArrayTypeIdent(const vector<const CTypeIdent *> &indexes, const CTypeIdent *base);
+	const vector<const CTypeIdent *> &indexes() const;
+};
+
+class CNamedTypeIdent : public CTypeIdent
+{
+	const CTypeIdent *m_type;
+public:
+	CNamedTypeIdent(const string &name, const CTypeIdent *type);
+	const CTypeIdent *type() const override;
+	virtual bool isOrdered() const override;
+};
+
+class CParamedTypeIdent
+{
+protected:
+	const vector<const CTypeIdent*> m_params;
+public:
+	CParamedTypeIdent(const vector<const CTypeIdent*> params);
+	const vector<const CTypeIdent*> &params() const;
+	bool isEqual(const CParamedTypeIdent *type) const;
+};
+
+class CProcTypeIdent : public CTypeIdent, public CParamedTypeIdent
+{
+public:
+	CProcTypeIdent(const vector<const CTypeIdent*> params);
+	virtual bool isEqual(const CTypeIdent *type) const override;
+};
+
+class CFuncTypeIdent : public CTypeIdent, public CParamedTypeIdent
+{
+	const CTypeIdent *m_resType;
+public:
+	CFuncTypeIdent(const vector<const CTypeIdent*> params, const CTypeIdent *resType);
+	const CTypeIdent *resType() const;
+	virtual bool isEqual(const CTypeIdent *type) const override;
+};
+
+class CTypedIdent : public CIdent
+{
+public:
+	const CTypeIdent *m_type;
+	CTypedIdent(const string &name, const CTypeIdent *ttype, EIdentType itype);
+	virtual const CTypeIdent *type() const override;
+};
+
+class CVarIdent : public CTypedIdent
+{
+public:
+	CVarIdent(const string &name, const CTypeIdent *type);
+};
+
+class CConstIdent : public CTypedIdent
 {
 public:
 	CTypeIdent *m_type;
-	CVarIdent(const string &name);
+	CConstIdent(const string &name, CTypeIdent *type);
 };
 
-class CEnumConstIdent : public CIdent
+class CEnumConstIdent : public CTypedIdent
 {
 public:
-	CEnumTypeIdent *m_owner;
-	CEnumConstIdent(const string &name, CEnumTypeIdent *owner = nullptr);
+	CEnumConstIdent(const string &name, CEnumTypeIdent *type = nullptr);
+	void setType(const CEnumTypeIdent *type);
 };
 
-class CProcIdent : public CIdent
+class CProcIdent : public CTypedIdent
 {
 public:
-	const vector<CVarIdent*> m_params;
-	CProcIdent(const string &name, const vector<CVarIdent*> &params);
+	CProcIdent(const string &name, const CTypeIdent *type);
 };
 
-class CFuncIdent : public CIdent
+class CFuncIdent : public CTypedIdent
 {
 public:
-	const vector<CVarIdent*> m_params;
-	CTypeIdent *m_restype;
-	CFuncIdent(const string &name, const vector<CVarIdent*> &params, CTypeIdent *restype);
+	CFuncIdent(const string &name, const CTypeIdent *type);
 };

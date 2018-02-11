@@ -63,6 +63,7 @@ private:
 	//IO
 	void nextLiter();
 	void ReadNextLine();
+	void WriteCurLine(bool bWithErrors = true);
 	//lecsical
 	void nextToken();
 	void scanIdentKeyWord();
@@ -86,24 +87,21 @@ private:
 	void rule_constpart();//<раздел констант>
 	void rule_constdecl();//<определение константы>
 	void rule_typepart();//<раздел типов>
-	void rule_typedecl();//<определение типа>
 	void rule_varpart();//<раздел переменных>
-	void rule_varDeclaration();//<описание однотипных переменных>
+	vector<CVarIdent*> rule_varDeclaration();//<описание однотипных переменных>
 	void rule_procFuncPart();//<раздел процедур и функций>
 	void rule_funcDecl();
 	void rule_funcHeader();
 	void rule_statementPart();//<раздел операторов>
-	void rule_compStatement();//<составной оператор>
-	void rule_unlabeledStatement();//<непомеченый оператор>
 	void rule_statement();//<оператор>
-	void rule_simplStatement();//<простой оператор>
-	void rule_complexStatement();//<сложный оператор>
-	CTypeIdent *rule_type();//<тип>
-	void rule_ifStatement();//<условный оператор>
-	CTypeIdent *rule_expression();//<выражение>
-	CTypeIdent *rule_simpleExpression();//<простое выражение>
-	CTypeIdent *rule_term();//<слагаемое>
-	CTypeIdent *rule_factor();//множитель
+	const CTypeIdent *rule_type();//<тип>
+	const CTypeIdent *rule_simpleType();//<простой тип>
+	const CTypeIdent *rule_expression();//<выражение>
+	const CTypeIdent *rule_simpleExpression();//<простое выражение>
+	const CTypeIdent *rule_term();//<слагаемое>
+	const CTypeIdent *rule_factor();//множитель
+	const CTypeIdent *rule_arrayVar(const CTypeIdent *vartype);
+	void rule_Paramed(const CParamedTypeIdent *type);
 	//semantic
 	void openContext();
 	void closeContext();

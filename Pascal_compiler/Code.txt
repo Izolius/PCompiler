@@ -1,13 +1,17 @@
 program aaa;
+type
+	enum=(one, two, three);
+	limited=two .. three;
+	myArray = array [one .. three] of integer;
+	myArray2=myArray;
 var
-	a,b,c: integer;
-begin	
-	if a=1 then 
-		if b=0 then
-			c:=1;
-		else
-			c:=0;
-	else
-		a:=9;
+	arr: myArray;
+	arr2:myArray2;
+	a:limited;
+procedure myproc(a: real; b: enum);
+begin
 
+end;
+begin	
+	myproc(1.0, a);
 end.

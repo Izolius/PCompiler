@@ -100,6 +100,7 @@ public:
 	bool isValue() const;
 	bool is(EVarType type) const;
 	bool is(initializer_list<EVarType> type) const;
+	bool is(initializer_list<EVarType> type, EVarType &res) const;
 
 	static string to_string(EOperator oper);
 private:

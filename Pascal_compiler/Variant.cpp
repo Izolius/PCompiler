@@ -35,3 +35,13 @@ string CStringVariant::ToString()
 {
 	return m_val;
 }
+
+CCharVariant::CCharVariant(unsigned char val):
+	CVariant(vtChar), m_val(val)
+{
+}
+
+string CCharVariant::ToString()
+{
+	return to_string(m_val);
+}

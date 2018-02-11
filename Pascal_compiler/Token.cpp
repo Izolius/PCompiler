@@ -87,6 +87,19 @@ bool CToken::is(initializer_list<EVarType> type) const
 	return false;
 }
 
+bool CToken::is(initializer_list<EVarType> type, EVarType & res) const
+{
+	if (!isValue())
+		return false;
+	for (EVarType tp : type)
+		if (tp == m_val->T)
+		{
+			res = tp;
+			return true;
+		}
+	return false;
+}
+
 string CToken::to_string(EOperator oper)
 {
 	switch (oper)
