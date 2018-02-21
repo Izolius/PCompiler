@@ -16,6 +16,11 @@ string CIntVariant::ToString()
 	return to_string(m_val);
 }
 
+CVariant * CIntVariant::Clone() const
+{
+	return new CIntVariant(m_val);
+}
+
 CRealVariant::CRealVariant(float val):
 	CVariant(vtReal), m_val(val)
 {
@@ -24,6 +29,11 @@ CRealVariant::CRealVariant(float val):
 string CRealVariant::ToString()
 {
 	return to_string(m_val);
+}
+
+CVariant * CRealVariant::Clone() const
+{
+	return new CRealVariant(m_val);
 }
 
 CStringVariant::CStringVariant(string val):
@@ -36,6 +46,11 @@ string CStringVariant::ToString()
 	return m_val;
 }
 
+CVariant * CStringVariant::Clone() const
+{
+	return new CStringVariant(m_val);
+}
+
 CCharVariant::CCharVariant(unsigned char val):
 	CVariant(vtChar), m_val(val)
 {
@@ -44,4 +59,9 @@ CCharVariant::CCharVariant(unsigned char val):
 string CCharVariant::ToString()
 {
 	return to_string(m_val);
+}
+
+CVariant * CCharVariant::Clone() const
+{
+	return new CCharVariant(m_val);
 }

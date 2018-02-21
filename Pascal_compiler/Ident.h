@@ -52,6 +52,7 @@ public:
 
 class CTypeIdent :public CIdent
 {
+protected:
 	ETypeType m_T;
 public:
 	const ETypeType &T;
@@ -61,6 +62,7 @@ public:
 	virtual bool isOrdered() const { return false; }
 	virtual bool contain(const CTypeIdent *ptype) const;
 	virtual const CTypeIdent *type() const override;
+	virtual const bool isSimple() const;
 protected:
 	CTypeIdent(const string &name, ETypeType type);
 };
@@ -70,6 +72,7 @@ class CIntTypeIdent: public CTypeIdent
 public:
 	CIntTypeIdent() :CTypeIdent("integer", ttInt) {}
 	virtual bool isOrdered() const override { return true; }
+	virtual const bool isSimple() const override { return true; }
 };
 
 class CCharTypeIdent : public CTypeIdent
@@ -77,6 +80,7 @@ class CCharTypeIdent : public CTypeIdent
 public:
 	CCharTypeIdent() :CTypeIdent("char", ttChar) {}
 	virtual bool isOrdered() const override { return true; }
+	virtual const bool isSimple() const override { return true; }
 };
 
 class CRealTypeIdent : public CTypeIdent
@@ -84,12 +88,7 @@ class CRealTypeIdent : public CTypeIdent
 public:
 	CRealTypeIdent() :CTypeIdent("real", ttReal) {}
 	virtual bool contain(const CTypeIdent *ptype) const override;
-};
-
-class CBooleanTypeIdent : public CTypeIdent
-{
-public:
-	CBooleanTypeIdent() :CTypeIdent("boolean", ttBoolean) {}
+	virtual const bool isSimple() const override { return true; }
 };
 
 class CStringTypeIdent : public CTypeIdent
@@ -107,11 +106,22 @@ public:
 
 class CEnumTypeIdent : public CTypeIdent
 {
-public:
+protected:
 	const vector<CEnumConstIdent*> m_vals;
+public:
 	CEnumTypeIdent(const vector<CEnumConstIdent*> &Enum);
+	CEnumTypeIdent(const string &name, const vector<CEnumConstIdent*> &Enum, ETypeType type = ttEnum);
 	virtual bool isOrdered() const override { return true; }
 	virtual bool contain(const CTypeIdent *ptype) const override;
+	virtual const bool isSimple() const override { return true; }
+	const vector<CEnumConstIdent*> &Enum() const;
+};
+
+class CBooleanTypeIdent : public CEnumTypeIdent
+{
+public:
+	CBooleanTypeIdent();
+	virtual const bool isSimple() const override { return true; }
 };
 //
 //class CBooleanTypeIdent : public CEnumTypeIdent
@@ -149,6 +159,7 @@ public:
 	int pos(int val) const;
 	int pos(unsigned char val) const;
 	virtual bool isOrdered() const override { return true; }
+	virtual const bool isSimple() const override { return true; }
 	virtual bool contain(const CTypeIdent *ptype) const override;
 };
 
@@ -167,6 +178,7 @@ public:
 	CNamedTypeIdent(const string &name, const CTypeIdent *type);
 	const CTypeIdent *type() const override;
 	virtual bool isOrdered() const override;
+	virtual const bool isSimple() const override;
 };
 
 class CParamedTypeIdent

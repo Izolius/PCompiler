@@ -15,6 +15,7 @@ private:
 public:
 	const EVarType &T;
 	virtual string ToString() = 0;
+	virtual CVariant *Clone() const = 0;
 protected:
 	CVariant(EVarType type);
 };
@@ -24,6 +25,7 @@ public:
 	int m_val;
 	CIntVariant(int val);
 	virtual string ToString() override;
+	virtual CVariant *Clone() const;
 };
 
 class CRealVariant : public CVariant {
@@ -31,6 +33,7 @@ public:
 	float m_val;
 	CRealVariant(float val);
 	virtual string ToString() override;
+	virtual CVariant *Clone() const;
 };
 
 class CStringVariant : public CVariant {
@@ -38,6 +41,7 @@ public:
 	string m_val;
 	CStringVariant(string val);
 	virtual string ToString() override;
+	virtual CVariant *Clone() const;
 };
 
 class CCharVariant : public CVariant {
@@ -45,5 +49,6 @@ public:
 	unsigned char m_val;
 	CCharVariant(unsigned char val);
 	virtual string ToString() override;
+	virtual CVariant *Clone() const;
 };
 

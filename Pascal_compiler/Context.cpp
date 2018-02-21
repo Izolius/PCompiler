@@ -5,13 +5,15 @@ CContext::CContext(CContext *parent):
 	m_parent(parent)
 {
 	if (!parent) {
+		CEnumConstIdent *True = new CEnumConstIdent("true");
+		CEnumConstIdent *False = new CEnumConstIdent("false");
+		add(True);
+		add(False);
 		add(m_CharIdent = new CCharTypeIdent());
 		add(m_IntIdent = new CIntTypeIdent());
 		add(m_RealIdent = new CRealTypeIdent());
-		add(m_BooleanIdent = new CBooleanTypeIdent());
+		add(m_BooleanIdent = new CEnumTypeIdent("boolean", { True, False }, ttBoolean));
 		add(m_ErrorIdent = new CErrorTypeIdent());
-		add(new CConstIdent("true", m_BooleanIdent));
-		add(new CConstIdent("false", m_BooleanIdent));
 		
 		m_NamesCounter = 0;
 	}
@@ -29,12 +31,12 @@ void CContext::add(CIdent * ident)
 	m_idents.insert({ ident->name(), ident });
 }
 
-const CTypeIdent * CContext::findT(string type, bool brec) const
+const CTypeIdent * CContext::findT(const string &type, bool brec) const
 {
 	return dynamic_cast<CTypeIdent*>(find(type, brec));
 }
 
-CVarIdent * CContext::findV(string var, bool brec) const
+CVarIdent * CContext::findV(const string &var, bool brec) const
 {
 	return nullptr;
 }
@@ -84,7 +86,7 @@ const CRealTypeIdent * CContext::getReal() const
 	return m_RealIdent;
 }
 
-const CBooleanTypeIdent * CContext::getBoolean() const
+const CEnumTypeIdent * CContext::getBoolean() const
 {
 	if (parent())
 		return parent()->getBoolean();

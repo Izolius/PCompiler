@@ -146,7 +146,9 @@
   <ItemGroup>
     <ClInclude Include="CLib.h" />
     <ClInclude Include="Context.h" />
+    <ClInclude Include="ErrorManager.h" />
     <ClInclude Include="Ident.h" />
+    <ClInclude Include="Lexer.h" />
     <ClInclude Include="PCompiler.h" />
     <ClInclude Include="Token.h" />
     <ClInclude Include="TypeUtility.h" />
@@ -154,7 +156,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Context.cpp" />
+    <ClCompile Include="ErrorManager.cpp" />
     <ClCompile Include="Ident.cpp" />
+    <ClCompile Include="Lexer.cpp" />
     <ClCompile Include="PCompiler.cpp" />
     <ClCompile Include="Source.cpp" />
     <ClCompile Include="Token.cpp" />

@@ -14,8 +14,16 @@
 #include "Token.h"
 #include "Context.h"
 #include "CLib.h"
+#include "Lexer.h"
+#include "ErrorManager.h"
 #include <algorithm>
+#include <memory>
 using namespace std;
+
+template<class Tto, class Tfrom>
+Tto type_cast(Tfrom type) {
+	return dynamic_cast<Tto>(type->type());
+}
 
 class PCompiler
 {
@@ -24,31 +32,17 @@ class PCompiler
 	static const size_t ERR_MAX = 20;
 	static const size_t ERR_ERROR = 0;
 
-	struct CError
-	{
-		CTextPosition m_pos;
-		size_t m_code;
-		CError(CTextPosition pos, size_t code) :m_pos(pos), m_code(code) {}
-		CError() : m_pos(0, 0), m_code(PCompiler::ERR_ERROR) {}
-	};
-
 	struct KeyWord 
 	{
 		EOperator code;
 		string name;
 	};
 	vector<CError> m_ErrList;
-	map<string, EOperator> m_KeyWords;
-	map<char, EOperator> m_KeyCacheMap;
-	CTextPosition m_curpos; 
-	char m_ch; // тикущая литера
-	CToken m_token; //текущий символ
+	CToken *m_token; //текущий символ
 	CTextPosition m_tokenpos;
-	string m_line;
-	string m_Code;
-	stringstream m_stream;
-	bool m_toStop;
 	CContext *m_Context;
+	CLexer m_Lexer;
+	unique_ptr<CErrorManager> m_ErrorManager;
 
 private:
 	void init();
@@ -59,19 +53,9 @@ public:
 
 	void Compile(const string &Code);
 private:
-	void error(CError Error);
-	//IO
-	void nextLiter();
-	void ReadNextLine();
-	void WriteCurLine(bool bWithErrors = true);
+	void error(CError *Error);
 	//lecsical
 	void nextToken();
-	void scanIdentKeyWord();
-	bool IsKW(const string &ident, EOperator &kw) const;
-	void scanUIntFloatC(bool isNeg = false);
-	void scanUInt();
-	void scanString();
-	void removeComments(bool fromPar);
 	//syntactic
 
 	void accept(EOperator expected);
@@ -101,6 +85,7 @@ private:
 	const CTypeIdent *rule_term();//<слагаемое>
 	const CTypeIdent *rule_factor();//множитель
 	const CTypeIdent *rule_arrayVar(const CTypeIdent *vartype);
+	const CTypeIdent *rule_variable(CVarIdent *variable);
 	void rule_Paramed(const CParamedTypeIdent *type);
 	//semantic
 	void openContext();

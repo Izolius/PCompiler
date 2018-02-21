@@ -1,5 +1,11 @@
 #include "Token.h"
 
+CToken::CToken()
+{
+	m_str = "";
+	m_val = nullptr;
+}
+
 CToken::~CToken()
 {
 	ClearVal();
@@ -160,10 +166,32 @@ string CToken::to_string(EOperator oper)
 	return "";
 }
 
+CToken &CToken::operator=(const CToken & obj)
+{
+	m_type = obj.m_type;
+	switch (m_type)
+	{
+	case Oper:
+		Change(obj.m_op);
+		break;
+	case Ident:
+		Change(obj.m_str);
+		break;
+	case Value:
+		m_val = obj.m_val->Clone();
+		m_str = m_val->ToString();
+		break;
+	default:
+		break;
+	}
+	return *this;
+}
+
 void CToken::ClearVal()
 {
 	if (m_type == Value) {
-		delete m_val;
+		if (m_val)
+			delete m_val;
 		m_val = nullptr;
 	}
 	m_str = "";

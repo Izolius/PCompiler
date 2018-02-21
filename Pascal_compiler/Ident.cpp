@@ -34,6 +34,11 @@ const CTypeIdent * CTypeIdent::type() const
 	return this;
 }
 
+const bool CTypeIdent::isSimple() const
+{
+	return false;
+}
+
 CTypeIdent::CTypeIdent(const string &name, ETypeType type) :
 	CIdent(name, itType),
 	m_T(type), T(m_T)
@@ -64,12 +69,17 @@ CStringTypeIdent::CStringTypeIdent(size_t maxlen) :
 {
 }
 
-CEnumTypeIdent::CEnumTypeIdent(const vector<CEnumConstIdent*>& Enum):
-	m_vals(Enum), CTypeIdent("", ttEnum)
+CEnumTypeIdent::CEnumTypeIdent(const string & name, const vector<CEnumConstIdent*>& Enum, ETypeType type/* = ttEnum*/):
+	m_vals(Enum), CTypeIdent(name, type)
 {
 	for (CEnumConstIdent *item : m_vals) {
 		item->setType(this);
 	}
+}
+
+CEnumTypeIdent::CEnumTypeIdent(const vector<CEnumConstIdent*>& Enum):
+	CEnumTypeIdent("",Enum)
+{
 }
 
 bool CEnumTypeIdent::contain(const CTypeIdent * ptype) const
@@ -78,6 +88,11 @@ bool CEnumTypeIdent::contain(const CTypeIdent * ptype) const
 		return type->base()->isEqual(this);
 	}
 	return false;
+}
+
+const vector<CEnumConstIdent*>& CEnumTypeIdent::Enum() const
+{
+	return m_vals;
 }
 
 CEnumConstIdent::CEnumConstIdent(const string & name, CEnumTypeIdent *type) :
@@ -110,7 +125,7 @@ int CLimitedTypeIdent::pos(const CEnumConstIdent * val) const
 	if (m_type != ctEnum)
 		return -1;
 	const CEnumTypeIdent *Enum = dynamic_cast<const CEnumTypeIdent *>(m_efrom->type());
-	auto vals = Enum->m_vals;
+	auto vals = Enum->Enum();
 	auto iter = find(vals.cbegin(), vals.cend(), val);
 	if (iter == vals.cend())
 		return -1;
@@ -164,7 +179,7 @@ bool CLimitedTypeIdent::contain(const CTypeIdent * ptype) const
 	if (auto type = dynamic_cast<const CEnumTypeIdent*>(ptype)) {
 		if (!m_base->isEqual(type) || m_type != ctEnum)
 			return false;
-		return m_efrom == type->m_vals.front() && m_eto == type->m_vals.back();
+		return m_efrom == type->Enum().front() && m_eto == type->Enum().back();
 	}
 	if (auto type = dynamic_cast<const CCharTypeIdent*>(ptype)) {
 		if (!m_base->isEqual(type) || m_type != ctChar)
@@ -219,6 +234,11 @@ const CTypeIdent * CNamedTypeIdent::type() const
 bool CNamedTypeIdent::isOrdered() const
 {
 	return type()->isOrdered();
+}
+
+const bool CNamedTypeIdent::isSimple() const
+{
+	return type()->isSimple();
 }
 
 CProcTypeIdent::CProcTypeIdent(const vector<const CTypeIdent*> params):
@@ -295,4 +315,9 @@ bool CParamedTypeIdent::isEqual(const CParamedTypeIdent * type) const
 		}
 	}
 	return true;
+}
+
+CBooleanTypeIdent::CBooleanTypeIdent() :
+	CEnumTypeIdent("boolean", { new CEnumConstIdent("true", this), new CEnumConstIdent("false", this) }, ttBoolean)
+{
 }

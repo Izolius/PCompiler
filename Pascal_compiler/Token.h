@@ -86,7 +86,7 @@ public:
 		CVariant *m_val;
 	};
 	string m_str;
-	CToken() {}
+	CToken();
 	~CToken();
 	void Change(EOperator op);
 	void Change(string ident);
@@ -103,6 +103,7 @@ public:
 	bool is(initializer_list<EVarType> type, EVarType &res) const;
 
 	static string to_string(EOperator oper);
+	CToken &operator =(const CToken &obj);
 private:
 	void ClearVal();
 };
