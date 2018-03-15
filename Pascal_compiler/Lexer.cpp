@@ -25,19 +25,19 @@ CLexer::CLexer()
 		//{casesy,"case"},
 		//{filesy,"file"},
 		//{gotosy,"goto"},
-	{ "type", typesy },
+	{ "type", typessy },
 		//{withsy,"with"},
 	{ "begin", beginsy },
 	{ "while", whilesy },
 	{ "array", arraysy },
 	{ "const", constsy },
-		//{labelsy,"label"},
+	{ "label", labelsy},
 		//{untilsy,"until"},
-		//{downtosy,"downto"},
+	{"downto",downtosy },
 		//{packedsy,"packed"},
 		//{recordsy,"record"},
 		//{repeatsy,"repeat"}},
-	{ "program", propgramsy },
+	{ "program", programsy },
 	{ "function", funcsy },
 	{ "procedure", procsy }
 	});
@@ -160,7 +160,7 @@ CToken *CLexer::nextToken()
 			}
 			else
 			{
-				error(new CError(m_curpos));
+				error(new CError(m_curpos, ecUnknownLiter));
 				nextLiter();
 			}
 		}
@@ -243,7 +243,7 @@ void CLexer::scanUInt()
 		if (nmb_int < INT_MAX / 10 || nmb_int < INT_MAX / 10 && digit <= INT_MAX % 10)
 			nmb_int = 10 * nmb_int + digit;
 		else {
-			error(new CError(m_curpos, 203));
+			error(new CError(m_curpos));
 			nmb_int = 0;
 		}
 		nextLiter();
