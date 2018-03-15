@@ -18,7 +18,6 @@
 #include "ErrorManager.h"
 #include <algorithm>
 #include <memory>
-#include <functional>
 using namespace std;
 
 template<class Tto, class Tfrom>
@@ -65,10 +64,6 @@ private:
 	void acceptIdent();
 	void accept(EVarType expected);
 
-	void rule_start(void (PCompiler::*rule)(), initializer_list<EOperator> stopwords);
-	template<class T>
-	T rule_start(T(PCompiler::*rule)(), initializer_list<EOperator> stopwords, T defaultResult);
-
 	void rule_program();
 	void rule_block();
 	void rule_labelpart();//<раздел меток>
@@ -79,7 +74,7 @@ private:
 	void rule_varpart();//<раздел переменных>
 	vector<CVarIdent*> rule_varDeclaration();//<описание однотипных переменных>
 	void rule_procFuncPart();//<раздел процедур и функций>
-	vector<CVarIdent*> rule_funcDecl();
+	void rule_funcDecl();
 	void rule_funcHeader();
 	void rule_statementPart();//<раздел операторов>
 	void rule_statement();//<оператор>
