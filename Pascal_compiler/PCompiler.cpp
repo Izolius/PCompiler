@@ -63,7 +63,7 @@ void PCompiler::accept(EOperator expected)
 	else {
 		CError *err = new CExpectedError(m_tokenpos, expected);
 		error(err);
-		throw new exception();
+		//throw new exception();
 	}
 }
 
@@ -157,8 +157,10 @@ void PCompiler::rule_block()
 {
 	rule_labelpart();
 	rule_constpart();
-	rule_start(&PCompiler::rule_typepart, { varsy,procsy,funcsy,beginsy });
-	rule_start(&PCompiler::rule_varpart, { procsy,funcsy,beginsy });
+	//rule_start(&PCompiler::rule_typepart, { varsy,procsy,funcsy,beginsy });
+	//rule_start(&PCompiler::rule_varpart, { procsy,funcsy,beginsy });
+	rule_typepart();
+	rule_varpart();
 	rule_procFuncPart();
 	rule_statementPart();
 }
@@ -212,7 +214,8 @@ void PCompiler::rule_typepart()
 			string name = m_token->ToString();
 			nextToken();
 			accept(EOperator::equal);
-			const CTypeIdent *type = rule_start<const CTypeIdent*>(&PCompiler::rule_type, { semicolon }, m_Context->getError());
+			//const CTypeIdent *type = rule_start<const CTypeIdent*>(&PCompiler::rule_type, { semicolon }, m_Context->getError());
+			const CTypeIdent *type = rule_type();
 			CTypeIdent *namedType = new CNamedTypeIdent(name, type);
 			m_Context->add(namedType);
 			accept(semicolon);
@@ -225,7 +228,10 @@ void PCompiler::rule_varpart()
 	if (m_token->is(varsy)) {
 		nextToken();
 		do {
-			for (CVarIdent *var : rule_start(&PCompiler::rule_varDeclaration, { semicolon }, vector<CVarIdent*>())) {
+			//for (CVarIdent *var : rule_start(&PCompiler::rule_varDeclaration, { semicolon }, vector<CVarIdent*>())) {
+			//	m_Context->add(var);
+			//}
+			for (CVarIdent *var : rule_varDeclaration()) {
 				m_Context->add(var);
 			}
 			accept(semicolon);
@@ -270,7 +276,8 @@ void PCompiler::rule_procFuncPart()
 {
 	EOperator op;
 	while (m_token->is({ funcsy, procsy }, op)) {
-		vector<CVarIdent*> fictivParams = rule_start(&PCompiler::rule_funcDecl, { semicolon }, vector<CVarIdent*>());
+		//vector<CVarIdent*> fictivParams = rule_start(&PCompiler::rule_funcDecl, { semicolon }, vector<CVarIdent*>());
+		vector<CVarIdent*> fictivParams = rule_funcDecl();
 		openContext();
 		for (CVarIdent *var : fictivParams) {
 			m_Context->add(var);
@@ -298,7 +305,8 @@ vector<CVarIdent*> PCompiler::rule_funcDecl()
 	if (m_token->is(leftpar)) {
 		do {
 			nextToken();
-			vector<CVarIdent*> curparams = rule_start(&PCompiler::rule_varDeclaration, {semicolon}, vector<CVarIdent*>());
+			//vector<CVarIdent*> curparams = rule_start(&PCompiler::rule_varDeclaration, {semicolon}, vector<CVarIdent*>());
+			vector<CVarIdent*> curparams = rule_varDeclaration();
 			fictivParams.insert(fictivParams.end(), curparams.begin(), curparams.end());
 			params.reserve(params.capacity() + curparams.size());
 			for (CVarIdent * param : curparams) {
@@ -450,7 +458,8 @@ const CTypeIdent *PCompiler::rule_type()
 		} while (m_token->is(comma));
 		accept(rbracket);
 		accept(ofsy);
-		const CTypeIdent *base = rule_start<const CTypeIdent*>(&PCompiler::rule_type, { semicolon }, m_Context->getError());
+		//const CTypeIdent *base = rule_start<const CTypeIdent*>(&PCompiler::rule_type, { semicolon }, m_Context->getError());
+		const CTypeIdent *base = rule_type();
 		resType = new CArrayTypeIdent(types, base);
 		m_Context->add(resType);
 		return resType;
