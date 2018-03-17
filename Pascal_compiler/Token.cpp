@@ -160,6 +160,54 @@ string CToken::to_string(EOperator oper)
 		return ":=";
 	case twopoints:
 		return "..";
+	case ifsy:
+		return "if";
+	case dosy:
+		return "do";
+	case orsy:
+		return "or";
+	case tosy:
+		return "to";
+	case endsy:
+		return "end";
+	case varsy:
+		return "var";
+	case divsy:
+		return "div";
+	case andsy:
+		return "and";
+	case notsy:
+		return "not";
+	case forsy:
+		return "for";
+	case modsy:
+		return "mod";
+	case thensy:
+		return "then";
+	case elsesy:
+		return "else";
+	case casesy:
+		return "case";
+	case typessy:
+		return "types";
+	case beginsy:
+		return "begin";
+	case whilesy:
+		return "while";
+	case arraysy:
+		return "array";
+	case constsy:
+		return "const";
+	case labelsy:
+		return "label";
+	case downtosy:
+		return "downto";
+	case programsy:
+		return "program";
+	case funcsy:
+		return "function";
+	case procsy:
+		return "procedure";
 	default:
 		break;
 	}
