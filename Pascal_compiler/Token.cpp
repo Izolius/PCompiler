@@ -164,6 +164,8 @@ string CToken::to_string(EOperator oper)
 		return "if";
 	case dosy:
 		return "do";
+	case ofsy:
+		return "of";
 	case orsy:
 		return "or";
 	case tosy:

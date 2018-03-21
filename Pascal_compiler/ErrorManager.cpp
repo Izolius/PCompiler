@@ -64,11 +64,52 @@ string CError::ToString() const
 		return "Должно идти имя";
 	case ecUnknownLiter:
 		return "Запрещённый символ";
-	case ecTypeExpected:
-		return "Ожидается тип";
 	case ecUnknownName:
 		return "Неизвестный идентификатор";
+	case ecWrongRealType:
+		return "Тип не должен быть REAL";
+	case ecWrongLimitedType:
+		return "Недопустимый ограниченный тип";
+	case ecMissedFuncResType:
+		return "В описании функции пропущен тип результата";
+	case ecWrongParamsCount:
+		return "Число парамеров не согласуется с описанием";
+	case ecBooleanOperandType:
+		return "Тип операнда должен быть BOOLEAN";
+	case ecVarIsNotArray:
+		return "Переменная не есть массив";
+	case ecWrongIndexType:
+		return "Тип индекса не соответствует описанию";
+	case ecWrongForIteratorType:
+		return "Недопустимый тип параметра цикла";
+	case ecWrongExpressionType:
+		return "Недопустимый тип выражения";
+	case ecTypesConflict:
+		return "Конфликт типов";
+	case ecIncompatableTypes:
+		return "Типы не совместны";
+	case ecTypeExpected:
+		return "Ожидается тип";
+	case ecWrongParamType:
+		return "Конфликт типов параметров";
+	case ecWrongIndexesCount:
+		return "Количество индексов не согласуется с описанием";
+	case ecTooMuchInteger:
+		return "Целая константа превышает предел";
+	case ecWrongAndNotOrOperands:
+		return "Операнды AND, NOT, OR должны быть булевыми";
+	case ecWrongPlusMinusOperandsTypes:
+		return "Недопустимые типа операндов операции + или -";
+	case ecWrongDivModOperandsTypes:
+		return "Операнды DIV и MOD должны быть целыми";
+	case ecWrongMultOperandsTypes:
+		return "Недопустимые типы операндов операции *";
+	case ecWrongDivOperandsTypes:
+		return "Недопустимые типы операндов операции /";
+	case ecWrondIdentType:
+		return "Неверный тип идентификатора";
 	default:
+		return "Неизвестная ошибка";
 		break;
 	}
 	return "";

@@ -14,11 +14,13 @@ class CContext
 	CRealTypeIdent *m_RealIdent;
 	CContext *m_parent;
 	size_t m_NamesCounter;
+	size_t m_stackSize;
 
 public:
 	CContext(CContext *parent = nullptr);
 	~CContext();
 	void add(CIdent *ident);
+	void add(CVarIdent *var);
 	const CTypeIdent *findT(const string &type, bool brec = true) const;
 	CVarIdent *findV(const string &var, bool brec = true) const;
 	const CEnumConstIdent *findEC(const string &ident, bool brec = true) const;

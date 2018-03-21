@@ -24,6 +24,16 @@ CVarIdent::CVarIdent(const string &name, const CTypeIdent *type):
 {
 }
 
+void CVarIdent::setOffset(size_t offset)
+{
+	m_offset;
+}
+
+size_t CVarIdent::getOffset() const
+{
+	return m_offset;
+}
+
 bool CTypeIdent::contain(const CTypeIdent * ptype) const
 {
 	return isEqual(ptype);
@@ -37,6 +47,11 @@ const CTypeIdent * CTypeIdent::type() const
 const bool CTypeIdent::isSimple() const
 {
 	return false;
+}
+
+size_t CTypeIdent::size() const
+{
+	return 4;
 }
 
 CTypeIdent::CTypeIdent(const string &name, ETypeType type) :
@@ -67,6 +82,11 @@ bool CTypeIdent::isT(ETypeType type) const
 CStringTypeIdent::CStringTypeIdent(size_t maxlen) :
 	CTypeIdent("string", ttString), m_maxlen(maxlen)
 {
+}
+
+size_t CStringTypeIdent::size() const
+{
+	return m_maxlen;
 }
 
 CEnumTypeIdent::CEnumTypeIdent(const string & name, const vector<CEnumConstIdent*>& Enum, ETypeType type/* = ttEnum*/):
@@ -218,7 +238,7 @@ CBasedTypeIdent::CBasedTypeIdent(const CTypeIdent * base):
 
 const CTypeIdent * CBasedTypeIdent::base() const
 {
-	return m_base;
+	return m_base->type();
 }
 
 CNamedTypeIdent::CNamedTypeIdent(const string & name, const CTypeIdent * type) :

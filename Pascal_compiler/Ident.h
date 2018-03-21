@@ -63,6 +63,7 @@ public:
 	virtual bool contain(const CTypeIdent *ptype) const;
 	virtual const CTypeIdent *type() const override;
 	virtual const bool isSimple() const;
+	virtual size_t size() const;
 protected:
 	CTypeIdent(const string &name, ETypeType type);
 };
@@ -81,6 +82,7 @@ public:
 	CCharTypeIdent() :CTypeIdent("char", ttChar) {}
 	virtual bool isOrdered() const override { return true; }
 	virtual const bool isSimple() const override { return true; }
+	virtual size_t size() const override { return 1; }
 };
 
 class CRealTypeIdent : public CTypeIdent
@@ -96,6 +98,7 @@ class CStringTypeIdent : public CTypeIdent
 public:
 	const size_t m_maxlen;
 	CStringTypeIdent(size_t maxlen = 255);
+	virtual size_t size() const override;
 };
 
 class CErrorTypeIdent : public CTypeIdent
@@ -114,6 +117,7 @@ public:
 	virtual bool isOrdered() const override { return true; }
 	virtual bool contain(const CTypeIdent *ptype) const override;
 	virtual const bool isSimple() const override { return true; }
+	virtual size_t size() const override { return 4; }
 	const vector<CEnumConstIdent*> &Enum() const;
 };
 
@@ -122,6 +126,7 @@ class CBooleanTypeIdent : public CEnumTypeIdent
 public:
 	CBooleanTypeIdent();
 	virtual const bool isSimple() const override { return true; }
+	virtual size_t size() const override { return 1; }
 };
 //
 //class CBooleanTypeIdent : public CEnumTypeIdent
@@ -160,6 +165,7 @@ public:
 	int pos(unsigned char val) const;
 	virtual bool isOrdered() const override { return true; }
 	virtual const bool isSimple() const override { return true; }
+	virtual size_t size() const override { return 4; }
 	virtual bool contain(const CTypeIdent *ptype) const override;
 };
 
@@ -217,8 +223,11 @@ public:
 
 class CVarIdent : public CTypedIdent
 {
+	size_t m_offset;
 public:
 	CVarIdent(const string &name, const CTypeIdent *type);
+	void setOffset(size_t offset);
+	size_t getOffset() const;
 };
 
 class CConstIdent : public CTypedIdent

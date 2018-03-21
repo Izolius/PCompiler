@@ -6,7 +6,7 @@ void main()
 	ifstream ifs;
 	ifs.open("Code.txt");
 	if (ifs) {
-		PCompiler compiler;
+		CCompiler compiler;
 		compiler.Compile(string(istreambuf_iterator<char>(ifs), {}));
 		//cout << string(istreambuf_iterator<char>(ifs), {});
 	}

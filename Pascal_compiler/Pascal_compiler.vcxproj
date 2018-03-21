@@ -147,6 +147,7 @@
     <ClInclude Include="CLib.h" />
     <ClInclude Include="Context.h" />
     <ClInclude Include="ErrorManager.h" />
+    <ClInclude Include="Generator.h" />
     <ClInclude Include="Ident.h" />
     <ClInclude Include="Lexer.h" />
     <ClInclude Include="PCompiler.h" />
@@ -157,6 +158,7 @@
   <ItemGroup>
     <ClCompile Include="Context.cpp" />
     <ClCompile Include="ErrorManager.cpp" />
+    <ClCompile Include="Generator.cpp" />
     <ClCompile Include="Ident.cpp" />
     <ClCompile Include="Lexer.cpp" />
     <ClCompile Include="PCompiler.cpp" />

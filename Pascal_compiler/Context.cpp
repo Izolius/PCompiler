@@ -2,7 +2,7 @@
 
 
 CContext::CContext(CContext *parent):
-	m_parent(parent)
+	m_parent(parent), m_stackSize(0)
 {
 	if (!parent) {
 		CEnumConstIdent *True = new CEnumConstIdent("true");
@@ -29,6 +29,13 @@ CContext::~CContext()
 void CContext::add(CIdent * ident)
 {
 	m_idents.insert({ ident->name(), ident });
+}
+
+void CContext::add(CVarIdent * var)
+{
+	m_idents.insert({ var->name(), var });
+	var->setOffset(m_stackSize);
+	m_stackSize += var->type()->size();
 }
 
 const CTypeIdent * CContext::findT(const string &type, bool brec) const

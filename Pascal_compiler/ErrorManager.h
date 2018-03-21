@@ -9,30 +9,30 @@ enum EErrorCode
 {
 	ecUnknownLiter=6,
 	ecIdentExpected=2,
-	ecSecondlyDescribedIdent=101,
-	ecWrongNameUsing=100,
-	ecLowerBoundMoreThanBigger=102,
-	ecUnknownName=104,
-	ecWrongRealType=109,
-	ecWrongLimitedType=112,
-	ecMissedFuncResType=123,
-	ecWrongParamsCount=126,
-	ecBooleanOperandType=135,
-	ecVarIsNotArray=138,
-	ecWrongIndexType=139,
-	ecWrongForIteratorType=143,
-	ecWrongExpressionType=144,
-	ecTypesConflict=145,
-	ecIncompatableTypes=182,
+	ecSecondlyDescribedIdent=101,//Имя описано повторно
+	ecWrongNameUsing=100,//Исопльзование иени не соответствует описанию
+	ecLowerBoundMoreThanBigger=102,//нижняяграница превосходит верхнюю
+	ecUnknownName=104,//имя не описано
+	ecWrongRealType=109,// тип не должен быть REAL
+	ecWrongLimitedType=112,//недопустимый ограниченный тип
+	ecMissedFuncResType=123,//в описании функции пропущен тип результата
+	ecWrongParamsCount=126,//число парамеров не согласуется с описанием
+	ecBooleanOperandType=135,//тип операнда должен быть BOOLEAN
+	ecVarIsNotArray=138,//переменная не есть массив
+	ecWrongIndexType=139,//Тип индекса не соответствует описанию
+	ecWrongForIteratorType=143,//недопустимый тип параметра цикла
+	ecWrongExpressionType=144,//недопустимый тип выражения
+	ecTypesConflict=145,//конфликт типов
+	ecIncompatableTypes=182,//типы не совместны
 	ecTypeExpected,//my
-	ecWrongParamType=189,
-	ecWrongIndexesCount=193,//194
-	ecTooMuchInteger=203,
-	ecWrongAndNotOrOperands=210,
-	ecWrongPlusMinusOperandsTypes=211,
-	ecWrongDivModOperandsTypes=212,
-	ecWrongMultOperandsTypes=213,
-	ecWrongDivOperandsTypes=214,
+	ecWrongParamType=189,//конфликт типов параметров
+	ecWrongIndexesCount=193,//количество индексов не согласуется с описанием
+	ecTooMuchInteger=203,//целая константа превышает предел
+	ecWrongAndNotOrOperands=210,//операнды AND, NOT, OR должны быть булевыми
+	ecWrongPlusMinusOperandsTypes=211,//недопустимые типа операндов операции + или -
+	ecWrongDivModOperandsTypes=212,//операнды DIV и MOD должны быть целыми
+	ecWrongMultOperandsTypes=213,//недопустимые типы операндов операции *
+	ecWrongDivOperandsTypes=214,//недопустимые типы операндов операции /
 	//305??
 	ecWrondIdentType,//my
 

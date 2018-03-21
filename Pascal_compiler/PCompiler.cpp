@@ -1,26 +1,23 @@
 #include "PCompiler.h"
 #include "TypeUtility.h"
 
-template const CTypeIdent*PCompiler::rule_start(const CTypeIdent*(PCompiler::*rule)(), initializer_list<EOperator> stopwords, const CTypeIdent* defaultResult);
-template vector<CVarIdent*>PCompiler::rule_start(vector<CVarIdent*>(PCompiler::*rule)(), initializer_list<EOperator> stopwords, vector<CVarIdent*> defaultResult);
 
-
-void PCompiler::init()
+void CCompiler::init()
 {
 	m_ErrList.reserve(ERR_MAX);
 	m_Context = nullptr;
 }
 
-PCompiler::PCompiler()
+CCompiler::CCompiler()
 {
 	init();
 }
 
-PCompiler::~PCompiler()
+CCompiler::~CCompiler()
 {
 }
 
-void PCompiler::Compile(const string &Code)
+void CCompiler::Compile(const string &Code)
 {
 	//m_Code = Code;
 	m_ErrorManager.reset(new CErrorManager());
@@ -37,25 +34,30 @@ void PCompiler::Compile(const string &Code)
 	catch (...) {
 		cout << "Compile Error." << endl;
 	}
-	
-	cout << "Error list : " << endl;
-	for (CError *err : m_ErrorManager->getErrors()) {
-		cout << err->m_pos.m_line << ' ' << err->m_pos.m_pos << ' ' << err->ToString() << '\n';
+	if (m_ErrorManager->getErrors().size()) {
+		cout << "Error list : " << endl;
+		for (CError *err : m_ErrorManager->getErrors()) {
+			cout << err->m_pos.m_line << ' ' << err->m_pos.m_pos << ' ' << err->ToString() << '\n';
+		}
 	}
+	else {
+		m_gen.buildFile("123.asm");
+	}
+	
 }
 
-void PCompiler::error(CError *Error)
+void CCompiler::error(CError *Error)
 {
 	m_ErrorManager->addError(Error);
 }
 
-void PCompiler::nextToken()
+void CCompiler::nextToken()
 {
 	m_token = m_Lexer.nextToken();
 	m_tokenpos = m_Lexer.getTokenPos();
 }
 
-void PCompiler::accept(EOperator expected)
+void CCompiler::accept(EOperator expected)
 {
 	if (m_token->is(expected)) {
 		nextToken();
@@ -63,11 +65,11 @@ void PCompiler::accept(EOperator expected)
 	else {
 		CError *err = new CExpectedError(m_tokenpos, expected);
 		error(err);
-		//throw new exception();
+		throw new exception();
 	}
 }
 
-void PCompiler::accept(initializer_list<EOperator> expected)
+void CCompiler::accept(initializer_list<EOperator> expected)
 {
 	if (m_token->is(expected)) {
 		nextToken();
@@ -77,7 +79,7 @@ void PCompiler::accept(initializer_list<EOperator> expected)
 	}
 }
 
-void PCompiler::accept(initializer_list<EOperator> expected, EOperator & res)
+void CCompiler::accept(initializer_list<EOperator> expected, EOperator & res)
 {
 	if (m_token->is(expected, res)) {
 		nextToken();
@@ -87,7 +89,7 @@ void PCompiler::accept(initializer_list<EOperator> expected, EOperator & res)
 	}
 }
 
-void PCompiler::acceptIdent()
+void CCompiler::acceptIdent()
 {
 	if (m_token->isIdent()) {
 		nextToken();
@@ -97,7 +99,7 @@ void PCompiler::acceptIdent()
 	}
 }
 
-void PCompiler::accept(EVarType expected)
+void CCompiler::accept(EVarType expected)
 {
 	if (m_token->is(expected)) {
 		nextToken();
@@ -107,38 +109,20 @@ void PCompiler::accept(EVarType expected)
 	}
 }
 
-void PCompiler::rule_start(void(PCompiler::* rule)(), initializer_list<EOperator> stopwords)
+void CCompiler::rule_start(void(CCompiler::* rule)(), initializer_list<EOperator> stopwords)
 {
 	try
 	{
 		(this->*rule)();
 	}
 	catch (exception *ex) {
-
-	}
-	while (!m_token->is(stopwords)) {
-		nextToken();
+		while (!m_token->is(stopwords)) {
+			nextToken();
+		}
 	}
 }
 
-template<class T>
-T PCompiler::rule_start(T(PCompiler::* rule)(), initializer_list<EOperator> stopwords, T defaultResult)
-{
-	T res;
-	try
-	{
-		res = (this->*rule)();
-	}
-	catch (exception *ex) {
-		res = defaultResult;
-	}
-	while (!m_token->is(stopwords)) {
-		nextToken();
-	}
-	return res;
-}
-
-void PCompiler::rule_program()
+void CCompiler::rule_program()
 {
 	openContext();
 	openContext();
@@ -147,25 +131,26 @@ void PCompiler::rule_program()
 		acceptIdent();
 		accept(semicolon);
 	}
+	m_curfunc.push("main");
 	rule_block();
 	closeContext();
 	closeContext();
 	accept(point);
 }
 
-void PCompiler::rule_block()
+void CCompiler::rule_block()
 {
+	m_gen.startProc(m_curfunc.top());
 	rule_labelpart();
 	rule_constpart();
-	//rule_start(&PCompiler::rule_typepart, { varsy,procsy,funcsy,beginsy });
-	//rule_start(&PCompiler::rule_varpart, { procsy,funcsy,beginsy });
-	rule_typepart();
-	rule_varpart();
+	rule_start(&CCompiler::rule_typepart, { varsy,procsy,funcsy,beginsy });
+	rule_start(&CCompiler::rule_varpart, { procsy,funcsy,beginsy });
 	rule_procFuncPart();
 	rule_statementPart();
+	m_gen.endProc();
 }
 
-void PCompiler::rule_labelpart()
+void CCompiler::rule_labelpart()
 {
 	if (m_token->is(labelsy)) {
 		rule_label();
@@ -176,12 +161,12 @@ void PCompiler::rule_labelpart()
 	}
 }
 
-void PCompiler::rule_label()
+void CCompiler::rule_label()
 {
 	accept(vtInt);
 }
 
-void PCompiler::rule_constpart()
+void CCompiler::rule_constpart()
 {
 	if (m_token->is(constsy)) {
 		do{
@@ -191,7 +176,7 @@ void PCompiler::rule_constpart()
 	}
 }
 
-void PCompiler::rule_constdecl()
+void CCompiler::rule_constdecl()
 {
 	acceptIdent();
 	accept(EOperator::equal);
@@ -206,7 +191,7 @@ void PCompiler::rule_constdecl()
 	accept((EVarType)(vtInt | vtReal));
 }
 
-void PCompiler::rule_typepart()
+void CCompiler::rule_typepart()
 {
 	if (m_token->is(typessy)) {
 		nextToken();
@@ -214,8 +199,7 @@ void PCompiler::rule_typepart()
 			string name = m_token->ToString();
 			nextToken();
 			accept(EOperator::equal);
-			//const CTypeIdent *type = rule_start<const CTypeIdent*>(&PCompiler::rule_type, { semicolon }, m_Context->getError());
-			const CTypeIdent *type = rule_type();
+			const CTypeIdent *type = rule_start<const CTypeIdent*>(&CCompiler::rule_type, { semicolon }, m_Context->getError());
 			CTypeIdent *namedType = new CNamedTypeIdent(name, type);
 			m_Context->add(namedType);
 			accept(semicolon);
@@ -223,23 +207,21 @@ void PCompiler::rule_typepart()
 	}
 }
 
-void PCompiler::rule_varpart()
+void CCompiler::rule_varpart()
 {
 	if (m_token->is(varsy)) {
 		nextToken();
 		do {
-			//for (CVarIdent *var : rule_start(&PCompiler::rule_varDeclaration, { semicolon }, vector<CVarIdent*>())) {
-			//	m_Context->add(var);
-			//}
-			for (CVarIdent *var : rule_varDeclaration()) {
+			for (CVarIdent *var : rule_start(&CCompiler::rule_varDeclaration, { semicolon }, vector<CVarIdent*>())) {
 				m_Context->add(var);
+				m_gen.pushToStack(var);
 			}
 			accept(semicolon);
 		} while (m_token->isIdent());
 	}
 }
 
-vector<CVarIdent*> PCompiler::rule_varDeclaration()
+vector<CVarIdent*> CCompiler::rule_varDeclaration()
 {
 	vector<CVarIdent*> vars;
 	auto addvar = [&]() {
@@ -272,12 +254,11 @@ vector<CVarIdent*> PCompiler::rule_varDeclaration()
 	return vars;
 }
 
-void PCompiler::rule_procFuncPart()
+void CCompiler::rule_procFuncPart()
 {
 	EOperator op;
 	while (m_token->is({ funcsy, procsy }, op)) {
-		//vector<CVarIdent*> fictivParams = rule_start(&PCompiler::rule_funcDecl, { semicolon }, vector<CVarIdent*>());
-		vector<CVarIdent*> fictivParams = rule_funcDecl();
+		vector<CVarIdent*> fictivParams = rule_start(&CCompiler::rule_procFuncDecl, { semicolon }, vector<CVarIdent*>());
 		openContext();
 		for (CVarIdent *var : fictivParams) {
 			m_Context->add(var);
@@ -289,7 +270,7 @@ void PCompiler::rule_procFuncPart()
 	}
 }
 
-vector<CVarIdent*> PCompiler::rule_funcDecl()
+vector<CVarIdent*> CCompiler::rule_procFuncDecl()
 {
 	EOperator op = m_token->m_op;
 	nextToken();
@@ -297,6 +278,7 @@ vector<CVarIdent*> PCompiler::rule_funcDecl()
 		error(new CError(m_tokenpos, ecSecondlyDescribedIdent));
 	}
 	string name = m_token->ToString();
+	m_curfunc.push(name);
 	vector<const CTypeIdent*> params;
 	vector<CVarIdent*> fictivParams;
 	CTypeIdent *collableType;
@@ -305,8 +287,7 @@ vector<CVarIdent*> PCompiler::rule_funcDecl()
 	if (m_token->is(leftpar)) {
 		do {
 			nextToken();
-			//vector<CVarIdent*> curparams = rule_start(&PCompiler::rule_varDeclaration, {semicolon}, vector<CVarIdent*>());
-			vector<CVarIdent*> curparams = rule_varDeclaration();
+			vector<CVarIdent*> curparams = rule_start(&CCompiler::rule_varDeclaration, {semicolon}, vector<CVarIdent*>());
 			fictivParams.insert(fictivParams.end(), curparams.begin(), curparams.end());
 			params.reserve(params.capacity() + curparams.size());
 			for (CVarIdent * param : curparams) {
@@ -342,18 +323,18 @@ vector<CVarIdent*> PCompiler::rule_funcDecl()
 	return fictivParams;
 }
 
-void PCompiler::rule_statementPart()
+void CCompiler::rule_statementPart()
 {
 	accept(beginsy);
-	rule_statement();
+	rule_start(&CCompiler::rule_statement, { semicolon, endsy });
 	while (m_token->is(semicolon)) {
 		nextToken();
-		rule_statement();
-	}
+		rule_start(&CCompiler::rule_statement, { semicolon, endsy });
+	} 
 	accept(endsy);
 }
 
-void PCompiler::rule_statement()
+void CCompiler::rule_statement()
 {
 	if (m_token->isIdent()) {
 		CIdent *ident = m_Context->find(m_token->ToString());
@@ -364,18 +345,22 @@ void PCompiler::rule_statement()
 		}
 		if (ident->m_type == itVar) {
 			const CTypeIdent *left, *right;
-			left = rule_variable(dynamic_cast<CVarIdent*>(ident));
+			CVarIdent* var = dynamic_cast<CVarIdent*>(ident);
+			left = rule_start<const CTypeIdent*>(&CCompiler::rule_variable, { assign }, m_Context->getError(), var);
 			accept(assign);
-			right = rule_expression();
+			right = rule_start<const CTypeIdent*>(&CCompiler::rule_expression, { semicolon }, m_Context->getError());
 			if (!CTypeUtility::CompatableAssign(left, right))
 			{
 				error(new CError(m_tokenpos, ecIncompatableTypes));
 			}
+			CRegister reg = m_gen.popFromStack(right->size());
+			m_gen.writeToStack(reg, var->getOffset());
+			m_gen.freeReg(reg);
 			return;
 		}
 		if (ident->m_type == itProc) {
 			const CParamedTypeIdent *type = type_cast<const CParamedTypeIdent *>(ident);
-			rule_Paramed(type);
+			rule_start(&CCompiler::rule_Paramed, { semicolon }, type);
 			return;
 		}
 		error(new CError(m_tokenpos, ecWrondIdentType));
@@ -392,22 +377,26 @@ void PCompiler::rule_statement()
 	if (m_token->is(ifsy)) {
 		accept(ifsy);
 		const CTypeIdent *cond(nullptr);
-		cond = rule_expression();
+		cond = rule_start<const CTypeIdent*>(&CCompiler::rule_expression, { thensy }, m_Context->getError());
 		if (!cond->isT(ttBoolean)) {
 			error(new CError(m_tokenpos, ecWrongExpressionType));
 		}
 		accept(thensy);
-		rule_statement();
+		rule_start(&CCompiler::rule_statement, { semicolon, elsesy, endsy });
 		if (m_token->is(elsesy)) {
-			rule_statement();
+			rule_start(&CCompiler::rule_statement, { semicolon, endsy });
 		}
 		return;
 	}
 	if (m_token->is(whilesy)) {
 		nextToken();
-		rule_expression();
+		const CTypeIdent *cond(nullptr);
+		cond = rule_start<const CTypeIdent*>(&CCompiler::rule_expression, { dosy }, m_Context->getError());
+		if (!cond->isT(ttBoolean)) {
+			error(new CError(m_tokenpos, ecWrongExpressionType));
+		}
 		accept(dosy);
-		rule_statement();
+		rule_start(&CCompiler::rule_statement, { semicolon, endsy });
 		return;
 	}
 	if (m_token->is(forsy)) {
@@ -437,11 +426,11 @@ void PCompiler::rule_statement()
 			error(new CError(m_tokenpos, ecIncompatableTypes));
 		}
 		accept(dosy);
-		rule_statement();
+		rule_start(&CCompiler::rule_statement, { semicolon, endsy });
 	}
 }
 
-const CTypeIdent *PCompiler::rule_type()
+const CTypeIdent *CCompiler::rule_type()
 {
 	const CTypeIdent *res = rule_simpleType();
 	if (!res->isT(ttError))
@@ -458,8 +447,7 @@ const CTypeIdent *PCompiler::rule_type()
 		} while (m_token->is(comma));
 		accept(rbracket);
 		accept(ofsy);
-		//const CTypeIdent *base = rule_start<const CTypeIdent*>(&PCompiler::rule_type, { semicolon }, m_Context->getError());
-		const CTypeIdent *base = rule_type();
+		const CTypeIdent *base = rule_start<const CTypeIdent*>(&CCompiler::rule_type, { semicolon }, m_Context->getError());
 		resType = new CArrayTypeIdent(types, base);
 		m_Context->add(resType);
 		return resType;
@@ -469,7 +457,7 @@ const CTypeIdent *PCompiler::rule_type()
 	return m_Context->getError();
 }
 
-const CTypeIdent * PCompiler::rule_simpleType()
+const CTypeIdent * CCompiler::rule_simpleType()
 {
 	const CTypeIdent *res(m_Context->getError());
 	CTypeIdent *resType(nullptr);
@@ -569,7 +557,7 @@ const CTypeIdent * PCompiler::rule_simpleType()
 	return m_Context->getError();
 }
 
-const CTypeIdent *PCompiler::rule_expression()
+const CTypeIdent *CCompiler::rule_expression()
 {
 	const CTypeIdent *left, *right;
 	EOperator op;
@@ -587,7 +575,7 @@ const CTypeIdent *PCompiler::rule_expression()
 	return left;
 }
 
-const CTypeIdent *PCompiler::rule_simpleExpression()
+const CTypeIdent *CCompiler::rule_simpleExpression()
 {
 	if (m_token->is(EOperator::plus)) {
 		nextToken();
@@ -614,12 +602,18 @@ const CTypeIdent *PCompiler::rule_simpleExpression()
 					code = ecWrongPlusMinusOperandsTypes;
 				error(new CError(m_tokenpos, code));
 			}
+			CRegister rightreg = m_gen.popFromStack(right->size());
+			CRegister leftreg = m_gen.popFromStack(left->size());
+			m_gen.Eval(leftreg, rightreg, oper);
+			m_gen.pushToStack(leftreg);
+			m_gen.freeReg(leftreg);
+			m_gen.freeReg(rightreg);
 		}
 	} while (op);
 	return left;
 }
 
-const CTypeIdent *PCompiler::rule_term()
+const CTypeIdent *CCompiler::rule_term()
 {
 	const CTypeIdent *left, *right;
 	left = rule_factor();
@@ -651,13 +645,19 @@ const CTypeIdent *PCompiler::rule_term()
 				}
 				error(new CError(m_tokenpos, code));
 			}
+			CRegister rightreg = m_gen.popFromStack(right->size());
+			CRegister leftreg = m_gen.popFromStack(left->size());
+			m_gen.Eval(leftreg, rightreg, oper);
+			m_gen.pushToStack(leftreg);
+			m_gen.freeReg(leftreg);
+			m_gen.freeReg(rightreg);
 			op = true;
 		}
 	} while (op);
 	return left;
 }
 
-const CTypeIdent *PCompiler::rule_factor()
+const CTypeIdent *CCompiler::rule_factor()
 {
 	const CTypeIdent *left(m_Context->getError()), *right(nullptr);
 	EVarType vartype;
@@ -666,9 +666,11 @@ const CTypeIdent *PCompiler::rule_factor()
 		{
 		case vtInt:
 			left = m_Context->getInteger();
+			m_gen.pushIntToStack(m_token->m_val->ToString());
 			break;
 		case vtReal:
 			left = m_Context->getReal();
+			m_gen.pushFloatToStack(m_token->m_val->ToString());
 			break;
 		case vtChar:
 			left = m_Context->getChar();
@@ -701,7 +703,14 @@ const CTypeIdent *PCompiler::rule_factor()
 			return m_Context->getError();
 		}
 		if (ident->m_type == itVar) {
-			return rule_variable(dynamic_cast<CVarIdent*>(ident));
+			CVarIdent* var = dynamic_cast<CVarIdent*>(ident);
+			const CTypeIdent *res = rule_start<const CTypeIdent*>(&CCompiler::rule_variable, { rightpar,semicolon,star, slash, divsy, modsy, andsy ,
+				EOperator::plus, EOperator::minus, orsy ,EOperator::equal, later, EOperator::greater,
+				latergrater, laterequal, greaterequal }, m_Context->getError(), var);
+			CRegister reg = m_gen.readFromStack(var->getOffset(), res->size());
+			m_gen.pushToStack(reg);
+			m_gen.freeReg(reg);
+			return res;
 		}
 		if (ident->m_type == itConst || ident->m_type == itEnumConst) {
 			left = ident->type();
@@ -721,9 +730,8 @@ const CTypeIdent *PCompiler::rule_factor()
 	return m_Context->getError();
 }
 
-const CTypeIdent * PCompiler::rule_arrayVar(const CTypeIdent *vartype)
+const CTypeIdent * CCompiler::rule_arrayVar(const CTypeIdent *vartype)
 {
-	accept(lbracket);
 	size_t i = 0;
 	const CArrayTypeIdent *array = type_cast<const CArrayTypeIdent *>(vartype);
 	if (!array) {
@@ -744,11 +752,10 @@ const CTypeIdent * PCompiler::rule_arrayVar(const CTypeIdent *vartype)
 	if (i != indexes.size()) {
 		error(new CError(m_tokenpos, ecWrongIndexesCount));
 	}
-	accept(rbracket);
 	return array->base();
 }
 
-const CTypeIdent * PCompiler::rule_variable(CVarIdent *variable)
+const CTypeIdent * CCompiler::rule_variable(CVarIdent *variable)
 {
 	if (!variable) {
 		error(new CError(m_tokenpos));
@@ -757,12 +764,14 @@ const CTypeIdent * PCompiler::rule_variable(CVarIdent *variable)
 	const CTypeIdent *type = variable->type();
 	nextToken();
 	while (m_token->is(lbracket)) {
+		nextToken();
 		type = rule_arrayVar(type);
+		accept(rbracket);
 	}
 	return type;
 }
 
-void PCompiler::rule_Paramed(const CParamedTypeIdent *type)
+void CCompiler::rule_Paramed(const CParamedTypeIdent *type)
 {
 	const vector<const CTypeIdent*> &params = type->params();
 	const CTypeIdent* curtype(nullptr);
@@ -784,7 +793,7 @@ void PCompiler::rule_Paramed(const CParamedTypeIdent *type)
 	}
 }
 
-void PCompiler::openContext()
+void CCompiler::openContext()
 {
 	if (m_Context) {
 		CContext *cur = new CContext(m_Context);
@@ -795,7 +804,7 @@ void PCompiler::openContext()
 	}
 }
 
-void PCompiler::closeContext()
+void CCompiler::closeContext()
 {
 	CContext *parent = m_Context->parent();
 	delete m_Context;
