@@ -24,12 +24,12 @@ CVarIdent::CVarIdent(const string &name, const CTypeIdent *type):
 {
 }
 
-void CVarIdent::setOffset(size_t offset)
+void CVarIdent::setOffset(int offset)
 {
-	m_offset;
+	m_offset = offset;
 }
 
-size_t CVarIdent::getOffset() const
+int CVarIdent::getOffset() const
 {
 	return m_offset;
 }
@@ -47,11 +47,6 @@ const CTypeIdent * CTypeIdent::type() const
 const bool CTypeIdent::isSimple() const
 {
 	return false;
-}
-
-size_t CTypeIdent::size() const
-{
-	return 4;
 }
 
 CTypeIdent::CTypeIdent(const string &name, ETypeType type) :
@@ -84,11 +79,6 @@ CStringTypeIdent::CStringTypeIdent(size_t maxlen) :
 {
 }
 
-size_t CStringTypeIdent::size() const
-{
-	return m_maxlen;
-}
-
 CEnumTypeIdent::CEnumTypeIdent(const string & name, const vector<CEnumConstIdent*>& Enum, ETypeType type/* = ttEnum*/):
 	m_vals(Enum), CTypeIdent(name, type)
 {
@@ -115,6 +105,15 @@ const vector<CEnumConstIdent*>& CEnumTypeIdent::Enum() const
 	return m_vals;
 }
 
+int CEnumTypeIdent::pos(const CEnumConstIdent * ident) const
+{
+	auto iter = find(m_vals.begin(), m_vals.end(), ident);
+	if (iter == m_vals.end())
+		return -1;
+	else
+		return distance(m_vals.begin(), iter);
+}
+
 CEnumConstIdent::CEnumConstIdent(const string & name, CEnumTypeIdent *type) :
 	CTypedIdent(name, type, itEnumConst)
 {
@@ -125,86 +124,120 @@ void CEnumConstIdent::setType(const CEnumTypeIdent * type)
 	m_type = type;
 }
 
-CLimitedTypeIdent::CLimitedTypeIdent(const CEnumConstIdent * from, const CEnumConstIdent * to, const CTypeIdent *base):
-	CTypeIdent("", ttLimited), m_efrom(from), m_eto(to), m_type(ctEnum), CBasedTypeIdent(base)
-{
-}
-
-CLimitedTypeIdent::CLimitedTypeIdent(int from, int to, const CTypeIdent *base):
-	CTypeIdent("", ttLimited), m_ifrom(from), m_ito(to), m_type(ctInt), CBasedTypeIdent(base)
-{
-}
-
-CLimitedTypeIdent::CLimitedTypeIdent(unsigned char from, unsigned char to, const CTypeIdent *base):
-	CTypeIdent("", ttLimited), m_cfrom(from), m_cto(to), m_type(ctChar), CBasedTypeIdent(base)
+CLimitedTypeIdent::CLimitedTypeIdent(const CTypeIdent * base):
+	CTypeIdent("",ttLimited), CBasedTypeIdent(base)
 {
 }
 
 int CLimitedTypeIdent::pos(const CEnumConstIdent * val) const
 {
-	if (m_type != ctEnum)
-		return -1;
-	const CEnumTypeIdent *Enum = dynamic_cast<const CEnumTypeIdent *>(m_efrom->type());
-	auto vals = Enum->Enum();
-	auto iter = find(vals.cbegin(), vals.cend(), val);
-	if (iter == vals.cend())
-		return -1;
-	return distance(iter, vals.cbegin());
+	return -1;
 }
 
 int CLimitedTypeIdent::pos(int val) const
 {
-	if (m_type != ctInt)
-		return -1;
-	if (val >= m_ifrom && val <= m_ito)
-		return val - m_ifrom;
 	return -1;
 }
 
 int CLimitedTypeIdent::pos(unsigned char val) const
 {
-	if (m_type != ctChar)
-		return false;
-	if (val >= m_cfrom && val <= m_cto)
-		return val - m_cfrom;
 	return -1;
 }
 
 bool CLimitedTypeIdent::contain(const CTypeIdent * ptype) const
 {
-	if (auto type = dynamic_cast<const CLimitedTypeIdent*>(ptype)) {
-		if (!m_base->isEqual(type->m_base))
-			return false;
+	return false;
+}
+
+CIntLimitedTypeIdent::CIntLimitedTypeIdent(int from, int to, const CTypeIdent * base) :
+	CLimitedTypeIdent(base), m_from(from), m_to(to)
+{
+}
+
+int CIntLimitedTypeIdent::pos(int val) const
+{
+	if (m_from <= val && val <= m_to)
+		return val - m_from;
+	else
+		return -1;
+}
+
+bool CIntLimitedTypeIdent::contain(const CTypeIdent * ptype) const
+{
+	if (auto type = dynamic_cast<decltype(this)>(ptype)) {
 		int from(-1), to(-1);
-		switch (m_type)
-		{
-		case CLimitedTypeIdent::ctEnum: {
-			int from = pos(type->m_efrom);
-			int to = pos(type->m_eto);
-			break;
-		}
-		case CLimitedTypeIdent::ctInt: {
-			int from = pos(type->m_ifrom);
-			int to = pos(type->m_ito);
-			break;
-		}
-		case CLimitedTypeIdent::ctChar: {
-			int from = pos(type->m_cfrom);
-			int to = pos(type->m_cto);
-			break;
-		}
-		}
+		from = pos(type->m_from);
+		to = pos(type->m_to);
+		return from >= 0 && from <= to;
+	}
+	return false;
+}
+
+
+CCharLimitedTypeIdent::CCharLimitedTypeIdent(unsigned char from, unsigned char to, const CTypeIdent * base) :
+	CLimitedTypeIdent(base), m_from(from), m_to(to)
+{
+}
+
+int CCharLimitedTypeIdent::pos(unsigned char val) const
+{
+	if (m_from <= val && val <= m_to)
+		return val - m_from;
+	else
+		return -1;
+}
+
+bool CCharLimitedTypeIdent::contain(const CTypeIdent * ptype) const
+{
+	if (auto type = dynamic_cast<decltype(this)>(ptype)) {
+		int from(-1), to(-1);
+		from = pos(type->m_from);
+		to = pos(type->m_to);
+		return from >= 0 && from <= to;
+	}
+	if (auto type = dynamic_cast<const CCharTypeIdent*>(ptype)) {
+		if (!m_base->isEqual(type))
+			return false;
+		return m_from == 0x0 && m_to == 0xff;
+	}
+	return false;
+}
+
+
+CEnumLimitedTypeIdent::CEnumLimitedTypeIdent(const CEnumConstIdent * from, const CEnumConstIdent * to, const CTypeIdent * base):
+	CLimitedTypeIdent(base), m_from(from), m_to(to)
+{
+
+}
+
+size_t CEnumLimitedTypeIdent::len() const
+{
+	if (const CEnumTypeIdent *type = dynamic_cast<const CEnumTypeIdent *>(m_base)) {
+		return type->pos(m_to) - type->pos(m_from);
+	}
+}
+
+int CEnumLimitedTypeIdent::pos(const CEnumConstIdent * val) const
+{
+	if (auto btype = dynamic_cast<const CEnumTypeIdent *>(m_base))
+		if (auto vtype = dynamic_cast<const CEnumTypeIdent *>(val->type()))
+			if (btype->isEqual(vtype))
+				return vtype->pos(val) - btype->pos(m_from);
+	return -1;
+}
+
+bool CEnumLimitedTypeIdent::contain(const CTypeIdent * ptype) const
+{
+	if (auto type = dynamic_cast<decltype(this)>(ptype)) {
+		int from(-1), to(-1);
+		from = pos(type->m_from);
+		to = pos(type->m_to);
 		return from >= 0 && from <= to;
 	}
 	if (auto type = dynamic_cast<const CEnumTypeIdent*>(ptype)) {
-		if (!m_base->isEqual(type) || m_type != ctEnum)
+		if (!m_base->isEqual(type))
 			return false;
-		return m_efrom == type->Enum().front() && m_eto == type->Enum().back();
-	}
-	if (auto type = dynamic_cast<const CCharTypeIdent*>(ptype)) {
-		if (!m_base->isEqual(type) || m_type != ctChar)
-			return false;
-		return m_cfrom == 0x0 && m_cto == 0xff;
+		return m_from == type->Enum().front() && m_to == type->Enum().back();
 	}
 	return false;
 }
@@ -229,6 +262,15 @@ CArrayTypeIdent::CArrayTypeIdent(const vector<const CTypeIdent*> &indexes, const
 const vector<const CTypeIdent*>& CArrayTypeIdent::indexes() const
 {
 	return m_indexes;
+}
+
+size_t CArrayTypeIdent::len() const
+{
+	size_t res(1);
+	for (const CTypeIdent *index : indexes()) {
+		res *= index->len();
+	}
+	return res;
 }
 
 CBasedTypeIdent::CBasedTypeIdent(const CTypeIdent * base):
@@ -259,6 +301,16 @@ bool CNamedTypeIdent::isOrdered() const
 const bool CNamedTypeIdent::isSimple() const
 {
 	return type()->isSimple();
+}
+
+size_t CNamedTypeIdent::size() const
+{
+	return type()->size();
+}
+
+size_t CNamedTypeIdent::len() const
+{
+	return type()->len();
 }
 
 CProcTypeIdent::CProcTypeIdent(const vector<const CTypeIdent*> params):

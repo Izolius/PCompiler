@@ -25,7 +25,14 @@ begin
 end.*)
 var 
 	a: integer;
+	c: integer;
+procedure myproc(b: integer;a :integer);
+var
+	d: integer;
 begin
-	a:=0;
-	a:=(1+2*3)+a;
+	d:=b;
+	a:=c;
+end;
+begin
+	myproc(1, 2);
 end.

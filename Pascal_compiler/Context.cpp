@@ -2,7 +2,7 @@
 
 
 CContext::CContext(CContext *parent):
-	m_parent(parent), m_stackSize(0)
+	m_parent(parent)
 {
 	if (!parent) {
 		CEnumConstIdent *True = new CEnumConstIdent("true");
@@ -14,6 +14,9 @@ CContext::CContext(CContext *parent):
 		add(m_RealIdent = new CRealTypeIdent());
 		add(m_BooleanIdent = new CEnumTypeIdent("boolean", { True, False }, ttBoolean));
 		add(m_ErrorIdent = new CErrorTypeIdent());
+		auto procType = new CProcTypeIdent({ m_IntIdent });
+		add(procType);
+		add(new CProcIdent("printi", procType));
 		
 		m_NamesCounter = 0;
 	}
@@ -34,8 +37,8 @@ void CContext::add(CIdent * ident)
 void CContext::add(CVarIdent * var)
 {
 	m_idents.insert({ var->name(), var });
-	var->setOffset(m_stackSize);
-	m_stackSize += var->type()->size();
+	//var->setOffset(m_stackSize);
+	//m_stackSize += var->type()->size();
 }
 
 const CTypeIdent * CContext::findT(const string &type, bool brec) const
@@ -65,9 +68,30 @@ CIdent * CContext::find(const string & ident, bool brec) const
 	return nullptr;
 }
 
+size_t CContext::deep(const string &ident) const
+{
+	const CContext *cont = this;
+	size_t deep = 0;
+	while (!cont->find(ident, false)) {
+		deep++;
+		cont = cont->m_parent;
+	}
+	return deep;
+}
+
 CContext * CContext::parent() const
 {
 	return m_parent;
+}
+
+set<CVarIdent*> CContext::getLocalVars() const
+{
+	set<CVarIdent*> res;
+	for (const pair<string, CIdent*> &pair : m_idents) {
+		if (CVarIdent* var=dynamic_cast<CVarIdent*>(pair.second))
+			res.insert(var);
+	}
+	return res;
 }
 
 string CContext::getNewName()

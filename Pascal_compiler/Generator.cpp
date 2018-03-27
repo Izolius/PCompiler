@@ -4,7 +4,7 @@
 
 
 CGenerator::CGenerator():
-	m_generateCode(true)
+	m_generateCode(true), m_stackSize(0)
 {
 	m_freeRegs = {
 		{ 1,{al,bl,cl,dl}},
@@ -25,29 +25,49 @@ const string & CGenerator::getCode() const
 
 void CGenerator::add(const string & row)
 {
-	m_code.append("\t" + row + "\n");
+	m_procs[m_curProc].append("\t" + row + "\n");
+}
+
+size_t CGenerator::getAddrSize() const
+{
+	return 4;
 }
 
 void CGenerator::pushToStack(CVarIdent * var)
 {
-	add("repeat " + to_string(var->type()->size()));
-	add("\tdec esp");
-	add("end repeat");
+	add(";add to stack " + var->name());
+	add("add esp, " + to_string(var->type()->size()));
+	m_stackSize += var->type()->size();
+	var->setOffset(m_stackSize);
+}
+
+void CGenerator::freeStackSpace(size_t bytes)
+{
+	if (bytes) {
+		add("; free local variables");
+		add("sub esp, " + to_string(bytes));
+		m_stackSize -= bytes;
+	}
 }
 
 void CGenerator::pushIntToStack(string val)
 {
+	add(";push const to stack");
 	add("push dword " + val);
+	m_stackSize += 4;
 }
 
 void CGenerator::pushFloatToStack(string val)
 {
+	add(";push const to stack");
 	add("push dword " + val);
+	m_stackSize += 4;
 }
 
 void CGenerator::pushToStack(CRegister reg)
 {
 	add("push " + reg.toString());
+	m_stackSize += reg.getSize();
 }
 
 CRegister CGenerator::popFromStack(size_t bytes)
@@ -57,6 +77,7 @@ CRegister CGenerator::popFromStack(size_t bytes)
 		m_freeRegs[bytes].erase(reg);
 		CRegister res(reg, bytes);
 		add("pop " + res.toString());
+		m_stackSize -= res.getSize();
 		return res;
 	}
 }
@@ -64,19 +85,71 @@ CRegister CGenerator::popFromStack(size_t bytes)
 void CGenerator::writeToStack(CRegister reg, int offset)
 {
 	if (reg.getSize() == 4) {
-		offset = offset - (int)reg.getSize();
-		string sign = offset > 0 ? "+" : "";
+		offset = -(int)reg.getSize();
+		string sign = offset >= 0 ? "+" : "";
 		add("mov [ebp" + sign + to_string(offset) + "], " + reg.toString());
 	}
+}
+
+void CGenerator::writeToStack(CRegister what, CRegister addr)
+{
+	add("mov [" + addr.toString() + "], " + what.toString());
 }
 
 CRegister CGenerator::readFromStack(int offset, size_t bytes)
 {
 	CRegister res = allocReg(bytes);
-	offset = offset - (int)bytes;
-	string sign = offset > 0 ? "+" : "";
+	offset = -(int)bytes;
+	string sign = offset >= 0 ? "+" : "";
 	add("mov " + res.toString() + ", [ebp" + sign + to_string(offset) + "]");
 	return res;
+}
+
+CRegister CGenerator::readFromStack(CVarIdent * var, size_t deep, bool indexed)
+{
+	if (!indexed) {
+		add(";read " + var->name() + " from stack");
+		CRegister res = allocReg(var->type()->size());
+		add("mov " + res.toString() + ", ebp");
+		while (deep) {
+			add("mov " + res.toString() + ", [" + res.toString() + "-" + to_string(getAddrSize()) + "]");
+			deep--;
+		}
+		int offset = -var->getOffset();
+		string sign = offset >= 0 ? "+" : "";
+		add("mov " + res.toString() + ", [" + res.toString() + sign + to_string(offset) + "]");
+		return res;
+	}
+}
+
+CRegister CGenerator::readAddr(CVarIdent * var, size_t deep, bool indexed)
+{
+	add(";read addr of " + var->name() + "{");
+	CRegister res = allocReg(var->type()->size());
+	add("mov " + res.toString() + ", ebp");
+	while (deep) {
+		add("mov " + res.toString() + ", [" + res.toString() + "-" + to_string(getAddrSize()) + "]");
+		deep--;
+	}
+	int offset = -var->getOffset();
+	bool pos = offset > 0;
+	offset = abs(offset);
+	if (pos)
+		add("add " + res.toString() + ", " + to_string(offset));
+	else
+		add("sub " + res.toString() + ", " + to_string(offset));
+	add(";}");
+	return res;
+}
+
+size_t CGenerator::getStackSize() const
+{
+	return m_stackSize;
+}
+
+void CGenerator::restoreStackStart()
+{
+	add("pop ebp");
 }
 
 CRegister CGenerator::allocReg(size_t bytes)
@@ -98,9 +171,14 @@ void CGenerator::startProc(const string & procName)
 {
 	m_curProc = procName;
 	add(procName + ":");
-	if (procName == "main") {
-		add("mov ebp, esp");
-	}
+	add("mov ebp, esp");
+	add("push ebp");
+	m_stackSize = getAddrSize();
+}
+
+void CGenerator::continueProc(const string & procName)
+{
+	m_curProc = procName;
 }
 
 void CGenerator::endProc()
@@ -126,6 +204,21 @@ void CGenerator::Eval(CRegister leftop, CRegister rightop, EOperator op)
 	}
 }
 
+void CGenerator::EvalProc(const string & procName)
+{
+	add("call " + procName);
+}
+
+void CGenerator::printf(CVarIdent * var, size_t deep)
+{
+	if (auto ivar = dynamic_cast<const CIntTypeIdent*>(var->type())) {
+		CRegister reg = readFromStack(var, deep);
+		add("push " + reg.toString());
+		add("push __msg__");
+		add("call [printf]");
+	}
+}
+
 void CGenerator::buildFile(const string & filename) const
 {
 	ofstream ofs;
@@ -134,12 +227,17 @@ void CGenerator::buildFile(const string & filename) const
 		"entry main" << endl <<
 		"include 'win32a.inc'" << endl <<
 		"section '.text' code executable" << endl << endl;
-	ofs << m_code << endl << endl;
-	ofs << "section '.idata' data readable import" << endl <<
-		"library kernel32, 'kernel32.dll',\\" << endl <<
-		"msvcrt, 'msvcrt.dll'" << endl <<
-		"import kernel32, ExitProcess, 'ExitProcess'" << endl <<
-		"import msvcrt, printf, 'printf'";
+	
+	for (const pair<string,string> &proc : m_procs) {
+		ofs << proc.second << endl;
+	}
+	ofs << "section '.rdata' data readable"<<endl<<
+		"\t__msg__ db '%x', 0"<<endl<<
+		"section '.idata' data readable import" << endl <<
+		"\tlibrary kernel32, 'kernel32.dll',\\" << endl <<
+		"\t\tmsvcrt, 'msvcrt.dll'" << endl <<
+		"\timport kernel32, ExitProcess, 'ExitProcess'" << endl <<
+		"\timport msvcrt, printf, 'printf'";
 	ofs.close();
 }
 
@@ -149,7 +247,7 @@ void CGenerator::StopGenerating()
 }
 
 CRegister::CRegister(ERegister reg, size_t size):
-	m_reg(reg), m_size(size)
+	m_reg(reg), m_size(size), m_byVal(false)
 {
 }
 
@@ -163,8 +261,14 @@ size_t CRegister::getSize() const
 	return m_size;
 }
 
+void CRegister::setByVal(bool byval)
+{
+	m_byVal = byval;
+}
+
 string CRegister::toString() const
 {
+	string res = "";
 	switch (m_reg)
 	{
 	case al:
@@ -200,12 +304,16 @@ string CRegister::toString() const
 	case di:
 		break;
 	case eax:
-		return "eax";
+		res = "eax";
+		break;
 	case ecx:
-		return "ecx";
+		res = "ecx";
+		break;
 	case edx:
-		return "edx";
+		res = "edx";
+		break;
 	case ebx:
+		res = "ebx";
 		break;
 	case esp:
 		break;
@@ -218,4 +326,16 @@ string CRegister::toString() const
 	default:
 		break;
 	}
+	if (m_byVal) {
+		res = "[" + res + "]";
+		switch (getSize())
+		{
+		case 4:
+			res = "dword" + res;
+			break;
+		default:
+			break;
+		}
+	}
+	return res;
 }

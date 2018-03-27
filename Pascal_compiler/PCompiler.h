@@ -141,6 +141,8 @@ private:
 	//semantic
 	void openContext();
 	void closeContext();
+	//
+	void freeContextVarsMem(const vector<CVarIdent*> &ContextParams);
 };
 
 #endif // !PCOMPILER_DEF

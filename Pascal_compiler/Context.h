@@ -14,7 +14,6 @@ class CContext
 	CRealTypeIdent *m_RealIdent;
 	CContext *m_parent;
 	size_t m_NamesCounter;
-	size_t m_stackSize;
 
 public:
 	CContext(CContext *parent = nullptr);
@@ -25,7 +24,9 @@ public:
 	CVarIdent *findV(const string &var, bool brec = true) const;
 	const CEnumConstIdent *findEC(const string &ident, bool brec = true) const;
 	CIdent *find(const string &ident, bool brec = true) const;
+	size_t deep(const string &ident) const;
 	CContext *parent() const;
+	set<CVarIdent*> getLocalVars() const;
 	string getNewName();
 
 	const CIntTypeIdent *getInteger() const;
@@ -33,5 +34,6 @@ public:
 	const CEnumTypeIdent *getBoolean() const;
 	const CCharTypeIdent *getChar() const;
 	const CErrorTypeIdent *getError() const;
+
 };
 
