@@ -14,9 +14,16 @@ CContext::CContext(CContext *parent):
 		add(m_RealIdent = new CRealTypeIdent());
 		add(m_BooleanIdent = new CEnumTypeIdent("boolean", { True, False }, ttBoolean));
 		add(m_ErrorIdent = new CErrorTypeIdent());
-		auto procType = new CProcTypeIdent({ m_IntIdent });
-		add(procType);
-		add(new CProcIdent("printi", procType));
+		{
+			auto procType = new CProcTypeIdent({ m_IntIdent });
+			add(procType);
+			add(new CProcIdent("printi", procType));
+		}
+		{
+			auto procType = new CProcTypeIdent({ m_RealIdent });
+			add(procType);
+			add(new CProcIdent("printf", procType));
+		}
 		
 		m_NamesCounter = 0;
 	}

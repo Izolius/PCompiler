@@ -17,31 +17,36 @@ CCompiler::~CCompiler()
 {
 }
 
-void CCompiler::Compile(const string &Code)
+bool CCompiler::Compile(const string &source, const string &dest)
 {
 	//m_Code = Code;
+	ifstream filestream;
+	filestream.open(source);
+
 	m_ErrorManager.reset(new CErrorManager());
 	setlocale(LC_ALL, "rus");
-	m_Lexer.setCode(Code);
+	m_Lexer.setCode(string(istreambuf_iterator<char>(filestream), {}));
 	m_Lexer.UpdateErrorManager(m_ErrorManager.get());
 	try {
 		nextToken();
 		rule_program();
-	}
-	catch (exception ex) {
-		cout << "Compile Error : " << ex.what() << '\n';
+		filestream.close();
 	}
 	catch (...) {
 		cout << "Compile Error." << endl;
+		filestream.close();
 	}
 	if (m_ErrorManager->getErrors().size()) {
 		cout << "Error list : " << endl;
 		for (CError *err : m_ErrorManager->getErrors()) {
 			cout << err->m_pos.m_line << ' ' << err->m_pos.m_pos << ' ' << err->ToString() << '\n';
 		}
+		return false;
 	}
 	else {
-		m_gen.buildFile("123.asm");
+		m_gen.buildFile(dest);
+		system(string("..\\fasm\\fasm.exe " + dest).c_str());
+		return true;
 	}
 	
 }
@@ -265,7 +270,7 @@ void CCompiler::rule_procFuncPart()
 		for (CVarIdent *var : fictivParams) {
 			m_Context->add(var);
 		}
-		size_t offset = m_gen.getStackSize();
+		int offset = -2 * (int)m_gen.getAddrSize();
 		for (auto iter = fictivParams.rbegin(); iter != fictivParams.rend(); iter++) {
 			(*iter)->setOffset(offset);
 			offset -= (*iter)->type()->size();
@@ -380,6 +385,7 @@ void CCompiler::rule_statement()
 			const CParamedTypeIdent *type = type_cast<const CParamedTypeIdent *>(ident);
 			rule_start(&CCompiler::rule_Paramed, { semicolon }, type);
 			m_gen.EvalProc(ident->name());
+			freeContextVarsMem(type);
 			return;
 		}
 		error(new CError(m_tokenpos, ecWrondIdentType));
@@ -742,6 +748,7 @@ const CTypeIdent *CCompiler::rule_factor()
 			left = func->resType();
 			rule_Paramed(func);
 			m_gen.EvalProc(ident->name());
+			freeContextVarsMem(func);
 			return left;
 		}
 		error(new CError(m_tokenpos, ecWrongNameUsing));
@@ -854,5 +861,14 @@ void CCompiler::freeContextVarsMem(const vector<CVarIdent*> &ContextParams)
 	bytes -= paramsSize;
 	m_gen.freeStackSpace(bytes);
 	m_gen.restoreStackStart();
-	m_gen.freeStackSpace(paramsSize);
+	//m_gen.freeStackSpace(paramsSize);
+}
+
+void CCompiler::freeContextVarsMem(const CParamedTypeIdent * type)
+{
+	size_t bytes(0);
+	for (auto type : type->params()) {
+		bytes += type->size();
+	}
+	m_gen.freeStackSpace(bytes);
 }

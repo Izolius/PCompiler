@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <stack>
 #include "Ident.h"
 using namespace std;
 
@@ -30,9 +31,10 @@ class CGenerator
 {
 	string m_code;
 	map<string, string> m_procs;
+	set<string> m_precompiled;
 	bool m_generateCode;
 	string m_curProc;
-	size_t m_stackSize;
+	stack<size_t> m_stackSize;
 	map<size_t, set<ERegister>> m_freeRegs;
 	map<size_t, set<ERegister>> m_busyRegs;
 public:
@@ -68,7 +70,8 @@ public:
 
 	void printf(CVarIdent *var, size_t deep);
 
-	void buildFile(const string &filename) const;
+	void buildFile(const string &filename);
+	void LoadProcompiled(const string &filename);
 	void StopGenerating();
 };
 

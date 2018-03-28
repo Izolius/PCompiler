@@ -83,4 +83,12 @@
       <Filter>Resource Files</Filter>
     </Text>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="buildin\printi.asm">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="buildin\rdata.asm">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
 </Project>

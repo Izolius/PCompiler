@@ -25,14 +25,24 @@ begin
 end.*)
 var 
 	a: integer;
-	c: integer;
 procedure myproc(b: integer;a :integer);
-var
-	d: integer;
+	var
+		d: integer;
+	procedure myproc2(c: integer);
+		var
+			e:integer;
+		begin
+			printi(c);
+			e:=18;
+			printi(e);
+		end;
+	begin
+		d:=7;
+		printi(d);
+		myproc2(19);
+	end;
 begin
-	d:=b;
-	a:=c;
-end;
-begin
-	myproc(1, 2);
+	a:=13;
+	myproc(12,24);
+	printi(a);
 end.

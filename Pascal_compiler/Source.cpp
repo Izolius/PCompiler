@@ -3,11 +3,7 @@
 
 void main()
 {
-	ifstream ifs;
-	ifs.open("Code.txt");
-	if (ifs) {
-		CCompiler compiler;
-		compiler.Compile(string(istreambuf_iterator<char>(ifs), {}));
-		//cout << string(istreambuf_iterator<char>(ifs), {});
-	}
+	CCompiler compiler;
+	if (compiler.Compile("Code.txt", "code.asm"))
+		system("code.exe");
 }

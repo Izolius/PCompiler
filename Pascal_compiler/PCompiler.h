@@ -10,6 +10,7 @@
 #include <map>
 #include <set>
 #include <list>
+#include <fstream>
 #include "Variant.h"
 #include "Token.h"
 #include "Context.h"
@@ -55,7 +56,7 @@ public:
 	CCompiler();
 	~CCompiler();
 
-	void Compile(const string &Code);
+	bool Compile(const string &source, const string &dest);
 private:
 	void error(CError *Error);
 	//lecsical
@@ -143,6 +144,7 @@ private:
 	void closeContext();
 	//
 	void freeContextVarsMem(const vector<CVarIdent*> &ContextParams);
+	void freeContextVarsMem(const CParamedTypeIdent *type);
 };
 
 #endif // !PCOMPILER_DEF

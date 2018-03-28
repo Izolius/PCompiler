@@ -4,7 +4,7 @@
 
 
 CGenerator::CGenerator():
-	m_generateCode(true), m_stackSize(0)
+	m_generateCode(true)
 {
 	m_freeRegs = {
 		{ 1,{al,bl,cl,dl}},
@@ -36,17 +36,17 @@ size_t CGenerator::getAddrSize() const
 void CGenerator::pushToStack(CVarIdent * var)
 {
 	add(";add to stack " + var->name());
-	add("add esp, " + to_string(var->type()->size()));
-	m_stackSize += var->type()->size();
-	var->setOffset(m_stackSize);
+	add("sub esp, " + to_string(var->type()->size()));
+	m_stackSize.top() += var->type()->size();
+	var->setOffset(m_stackSize.top());
 }
 
 void CGenerator::freeStackSpace(size_t bytes)
 {
 	if (bytes) {
 		add("; free local variables");
-		add("sub esp, " + to_string(bytes));
-		m_stackSize -= bytes;
+		add("add esp, " + to_string(bytes));
+		m_stackSize.top() -= bytes;
 	}
 }
 
@@ -54,20 +54,20 @@ void CGenerator::pushIntToStack(string val)
 {
 	add(";push const to stack");
 	add("push dword " + val);
-	m_stackSize += 4;
+	m_stackSize.top() += 4;
 }
 
 void CGenerator::pushFloatToStack(string val)
 {
 	add(";push const to stack");
 	add("push dword " + val);
-	m_stackSize += 4;
+	m_stackSize.top() += 4;
 }
 
 void CGenerator::pushToStack(CRegister reg)
 {
 	add("push " + reg.toString());
-	m_stackSize += reg.getSize();
+	m_stackSize.top() += reg.getSize();
 }
 
 CRegister CGenerator::popFromStack(size_t bytes)
@@ -77,7 +77,7 @@ CRegister CGenerator::popFromStack(size_t bytes)
 		m_freeRegs[bytes].erase(reg);
 		CRegister res(reg, bytes);
 		add("pop " + res.toString());
-		m_stackSize -= res.getSize();
+		m_stackSize.top() -= res.getSize();
 		return res;
 	}
 }
@@ -144,7 +144,7 @@ CRegister CGenerator::readAddr(CVarIdent * var, size_t deep, bool indexed)
 
 size_t CGenerator::getStackSize() const
 {
-	return m_stackSize;
+	return m_stackSize.top();
 }
 
 void CGenerator::restoreStackStart()
@@ -171,9 +171,10 @@ void CGenerator::startProc(const string & procName)
 {
 	m_curProc = procName;
 	add(procName + ":");
-	add("mov ebp, esp");
 	add("push ebp");
-	m_stackSize = getAddrSize();
+	add("mov ebp, esp");
+	m_stackSize.push(0);
+	//m_stackSize = getAddrSize();
 }
 
 void CGenerator::continueProc(const string & procName)
@@ -187,6 +188,7 @@ void CGenerator::endProc()
 		add("ret");
 	else
 		add("call [ExitProcess]");
+	m_stackSize.pop();
 }
 
 void CGenerator::Eval(CRegister leftop, CRegister rightop, EOperator op)
@@ -206,6 +208,22 @@ void CGenerator::Eval(CRegister leftop, CRegister rightop, EOperator op)
 
 void CGenerator::EvalProc(const string & procName)
 {
+	if (procName == "printi") {
+		add("; call printi{");
+		add("push __imsg__");
+		add("call [printf]");
+		add("add esp, 4");
+		add(";}");
+		return;
+	}
+	if (procName == "printf") {
+		add("; call printi{");
+		add("push __fmsg__");
+		add("call [printf]");
+		add("add esp, 4");
+		add(";}");
+		return;
+	}
 	add("call " + procName);
 }
 
@@ -219,26 +237,38 @@ void CGenerator::printf(CVarIdent * var, size_t deep)
 	}
 }
 
-void CGenerator::buildFile(const string & filename) const
+void CGenerator::buildFile(const string & filename)
 {
+	LoadProcompiled("buildin\\printi.asm");
+	LoadProcompiled("buildin\\rdata.asm");
 	ofstream ofs;
 	ofs.open(filename);
 	ofs << "format PE console" << endl <<
 		"entry main" << endl <<
-		"include 'win32a.inc'" << endl <<
+		"include 'D:\\Projects\\Visual_Studio\\Pascal_compiler\\FASM\\win32a.inc'" << endl <<
 		"section '.text' code executable" << endl << endl;
 	
 	for (const pair<string,string> &proc : m_procs) {
 		ofs << proc.second << endl;
 	}
-	ofs << "section '.rdata' data readable"<<endl<<
-		"\t__msg__ db '%x', 0"<<endl<<
-		"section '.idata' data readable import" << endl <<
+	for (const string &code : m_precompiled) {
+		ofs << code << endl;
+	}
+	ofs <<"section '.idata' data readable import" << endl <<
 		"\tlibrary kernel32, 'kernel32.dll',\\" << endl <<
 		"\t\tmsvcrt, 'msvcrt.dll'" << endl <<
 		"\timport kernel32, ExitProcess, 'ExitProcess'" << endl <<
 		"\timport msvcrt, printf, 'printf'";
 	ofs.close();
+}
+
+void CGenerator::LoadProcompiled(const string & filename)
+{
+	ifstream ifs(filename);
+	std::string func((std::istreambuf_iterator<char>(ifs)),
+		std::istreambuf_iterator<char>());
+	m_precompiled.insert(func);
+	ifs.close();
 }
 
 void CGenerator::StopGenerating()
