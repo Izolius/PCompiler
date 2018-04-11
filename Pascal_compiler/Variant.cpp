@@ -28,7 +28,13 @@ CRealVariant::CRealVariant(float val):
 
 string CRealVariant::ToString()
 {
-	return to_string(m_val);
+	string res = to_string(m_val);
+	size_t offset = res.find(',');
+	if (offset != string::npos) {
+		res.replace(offset, 1, ".");
+	}
+
+	return res;
 }
 
 CVariant * CRealVariant::Clone() const
@@ -58,7 +64,7 @@ CCharVariant::CCharVariant(unsigned char val):
 
 string CCharVariant::ToString()
 {
-	return to_string(m_val);
+	return string(1, m_val);
 }
 
 CVariant * CCharVariant::Clone() const

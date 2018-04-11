@@ -38,6 +38,11 @@ class CTypeIdent;
 class CEnumConstIdent;
 class CEnumTypeIdent;
 
+template<class Tto, class Tfrom>
+Tto type_cast(Tfrom type) {
+	return dynamic_cast<Tto>(type->type());
+}
+
 class CIdent
 {
 public:
@@ -47,6 +52,7 @@ public:
 	CIdent(const string &name, EIdentType type);
 	virtual const CTypeIdent *type() const = 0;
 	virtual const string &name() const;
+	bool isT(EIdentType type) const;
 	~CIdent();
 };
 
@@ -64,6 +70,7 @@ public:
 	virtual const CTypeIdent *type() const override;
 	virtual const bool isSimple() const;
 	virtual size_t size() const = 0;
+	virtual int left() const { return 0; }
 	virtual size_t len() const = 0;
 protected:
 	CTypeIdent(const string &name, ETypeType type);
@@ -77,6 +84,7 @@ public:
 	virtual const bool isSimple() const override { return true; }
 	virtual size_t size() const override { return 4; }
 	virtual size_t len() const override { return numeric_limits<size_t>::max(); }
+	virtual int left() const { return numeric_limits<int>::min(); }
 };
 
 class CCharTypeIdent : public CTypeIdent
@@ -85,7 +93,7 @@ public:
 	CCharTypeIdent() :CTypeIdent("char", ttChar) {}
 	virtual bool isOrdered() const override { return true; }
 	virtual const bool isSimple() const override { return true; }
-	virtual size_t size() const override { return 1; }
+	virtual size_t size() const override { return 4; }
 	virtual size_t len() const override { return numeric_limits<unsigned char>::max(); }
 };
 
@@ -97,6 +105,7 @@ public:
 	virtual const bool isSimple() const override { return true; }
 	virtual size_t size() const override { return 4; }
 	virtual size_t len() const override { return numeric_limits<size_t>::max(); }
+	virtual int left() const { return numeric_limits<size_t>::min(); }
 };
 
 class CStringTypeIdent : public CTypeIdent
@@ -175,6 +184,7 @@ public:
 	int pos(const CEnumConstIdent *val) const;
 	int pos(int val) const;
 	int pos(unsigned char val) const;
+	virtual int left() const = 0;
 	virtual bool isOrdered() const override { return true; }
 	virtual const bool isSimple() const override { return true; }
 	virtual size_t size() const override { return m_base->size(); }
@@ -186,8 +196,9 @@ class CIntLimitedTypeIdent : public CLimitedTypeIdent
 	const int m_from, m_to;
 public:
 	CIntLimitedTypeIdent(int from, int to, const CTypeIdent *base);
-	virtual size_t len() const override { return m_to - m_from; }
+	virtual size_t len() const override { return m_to - m_from + 1; }
 	int pos(int val) const;
+	virtual int left() const;
 	virtual bool contain(const CTypeIdent *ptype) const override;
 };
 
@@ -196,8 +207,9 @@ class CCharLimitedTypeIdent : public CLimitedTypeIdent
 	const unsigned char m_from, m_to;
 public:
 	CCharLimitedTypeIdent(unsigned char from, unsigned char to, const CTypeIdent *base);
-	virtual size_t len() const override { return m_to - m_from; }
+	virtual size_t len() const override { return m_to - m_from + 1; }
 	int pos(unsigned char val) const;
+	virtual int left() const;
 	virtual bool contain(const CTypeIdent *ptype) const override;
 };
 
@@ -208,6 +220,7 @@ public:
 	CEnumLimitedTypeIdent(const CEnumConstIdent * from, const CEnumConstIdent * to, const CTypeIdent *base);
 	virtual size_t len() const override;
 	int pos(const CEnumConstIdent *val) const;
+	virtual int left() const;
 	virtual bool contain(const CTypeIdent *ptype) const override;
 };
 
@@ -217,7 +230,7 @@ class CArrayTypeIdent : public CTypeIdent, public CBasedTypeIdent
 public:
 	CArrayTypeIdent(const vector<const CTypeIdent *> &indexes, const CTypeIdent *base);
 	const vector<const CTypeIdent *> &indexes() const;
-	virtual size_t size() const override { return m_base->size(); }
+	virtual size_t size() const override;
 	virtual size_t len() const override;
 
 };

@@ -23,10 +23,6 @@
 #include <functional>
 using namespace std;
 
-template<class Tto, class Tfrom>
-Tto type_cast(Tfrom type) {
-	return dynamic_cast<Tto>(type->type());
-}
 class CGenerator;
 
 class CCompiler

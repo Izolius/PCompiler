@@ -89,6 +89,17 @@ const CTypeIdent * CTypeUtility::Result(const CTypeIdent * left, EOperator oper,
 		if (left->isT(ttBoolean))
 			return left;
 		break;
+	case EOperator::greater:
+	case EOperator::later:
+	case EOperator::laterequal:
+	case EOperator::greaterequal:
+		if (right && left->isEqual(right) && !left->isT({ttArray}) && !right->isT({ ttArray }))
+			return context->getBoolean();
+		break;
+	case EOperator::equal:
+		if (right && left->isEqual(right))
+			return context->getBoolean();
+		break;
 	}
 	if (context)
 		return context->getError();

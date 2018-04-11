@@ -79,16 +79,28 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="Code.txt">
-      <Filter>Resource Files</Filter>
-    </Text>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="buildin\printi.asm">
       <Filter>Resource Files</Filter>
     </None>
     <None Include="buildin\rdata.asm">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="code.asm">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="buildin\printr.asm">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="buildin\printc.asm">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="Test.pas">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Code.pas">
+      <Filter>Resource Files</Filter>
+    </Text>
   </ItemGroup>
 </Project>

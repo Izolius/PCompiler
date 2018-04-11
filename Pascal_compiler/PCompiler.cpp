@@ -373,12 +373,7 @@ void CCompiler::rule_statement()
 			{
 				error(new CError(m_tokenpos, ecIncompatableTypes));
 			}
-			CRegister reg = m_gen.popFromStack(right->size());
-			CRegister varAddr = m_gen.popFromStack(m_gen.getAddrSize());
-
-			m_gen.writeToStack(reg, varAddr);
-			m_gen.freeReg(reg);
-			m_gen.freeReg(varAddr);
+			m_gen.EvalAssgn(left, right);
 			return;
 		}
 		if (ident->m_type == itProc) {
@@ -392,25 +387,43 @@ void CCompiler::rule_statement()
 		return;
 	}
 	if (m_token->is(beginsy)) {
-		nextToken();
-		do{
-			rule_statement();
-		} while (m_token->is(semicolon));
-		accept(endsy);
+		
+		rule_statementPart();
 		return;
 	}
 	if (m_token->is(ifsy)) {
 		accept(ifsy);
+
+		m_gen.If_Start();
+
 		const CTypeIdent *cond(nullptr);
 		cond = rule_start<const CTypeIdent*>(&CCompiler::rule_expression, { thensy }, m_Context->getError());
 		if (!cond->isT(ttBoolean)) {
-			error(new CError(m_tokenpos, ecWrongExpressionType));
+			error(new CError(m_tokenpos, ecBooleanOperandType));
 		}
+		m_gen.If_Check();
 		accept(thensy);
+		bool bwasElse(false);
 		rule_start(&CCompiler::rule_statement, { semicolon, elsesy, endsy });
+		bool bWasSemicolon = true;
+		m_gen.If_Else();
+		if (m_token->is(semicolon)){
+			m_gen.If_End();
+			return;
+		}
+		else
+			bWasSemicolon = false;
 		if (m_token->is(elsesy)) {
+			nextToken();
 			rule_start(&CCompiler::rule_statement, { semicolon, endsy });
 		}
+		//else {
+		//	CError *err = new CExpectedError(m_tokenpos, semicolon);
+		//	error(err);
+		//	throw new exception();
+		//}
+		m_gen.If_End();
+
 		return;
 	}
 	if (m_token->is(whilesy)) {
@@ -418,40 +431,51 @@ void CCompiler::rule_statement()
 		const CTypeIdent *cond(nullptr);
 		cond = rule_start<const CTypeIdent*>(&CCompiler::rule_expression, { dosy }, m_Context->getError());
 		if (!cond->isT(ttBoolean)) {
-			error(new CError(m_tokenpos, ecWrongExpressionType));
+			error(new CError(m_tokenpos, ecBooleanOperandType));
 		}
 		accept(dosy);
 		rule_start(&CCompiler::rule_statement, { semicolon, endsy });
 		return;
 	}
 	if (m_token->is(forsy)) {
+		m_gen.For_Start();
 		nextToken();
 		if (!m_token->isIdent())
 		{
 			error(new CError(m_tokenpos, ecIdentExpected));
 		}
-		CIdent *ident = m_Context->find(m_token->ToString());
-		string identName;
-		if (!ident || !ident->type()->isOrdered()) {
-			error(new CError(m_tokenpos, ecWrongForIteratorType));
-			identName = m_token->ToString();
+		CVarIdent *var = dynamic_cast<CVarIdent*>(m_Context->find(m_token->ToString()));
+		if (!var) {
+			var = new CVarIdent(m_token->ToString(), m_Context->getError());
+			m_Context->add(var);
 		}
-		nextToken();
+		const CTypeIdent* varType = rule_start<const CTypeIdent*>(&CCompiler::rule_variable, { assign }, m_Context->getError(), var);
+		if (!varType->isOrdered()) {
+			error(new CError(m_tokenpos, ecWrongForIteratorType));
+		}
 		accept(assign);
 		const CTypeIdent *from, *to;
 		from = rule_expression();
-		accept({ downtosy,tosy });
-		to = rule_expression();
-		if (!ident) {
-			ident = new CVarIdent(identName, from);
-			m_Context->add(ident);
+		
+		{
+			m_gen.EvalAssgn(varType, from);
 		}
-		if (!CTypeUtility::CompatableAssign(ident->type(),from) 
-			|| !CTypeUtility::CompatableAssign(ident->type(), to)) {
+
+		EOperator op;
+		accept({ downtosy,tosy }, op);
+
+		to = rule_expression();
+		m_gen.For_Check(var, m_Context->deep(var->name()), op == tosy);
+		
+		if (!CTypeUtility::CompatableAssign(var->type(),from) 
+			|| !CTypeUtility::CompatableAssign(var->type(), to)) {
 			error(new CError(m_tokenpos, ecIncompatableTypes));
 		}
 		accept(dosy);
 		rule_start(&CCompiler::rule_statement, { semicolon, endsy });
+
+		m_gen.For_Next(var, m_Context->deep(var->name()), op == tosy);
+		m_gen.For_End();
 	}
 }
 
@@ -465,11 +489,16 @@ const CTypeIdent *CCompiler::rule_type()
 		vector<const CTypeIdent *> types;
 		nextToken();
 		accept(lbracket);
-		do {
+		{
 			const CTypeIdent *type = rule_simpleType();
 			types.push_back(type);
-			//nextToken();
-		} while (m_token->is(comma));
+		}
+		
+		while (m_token->is(comma)) {
+			nextToken();
+			const CTypeIdent *type = rule_simpleType();
+			types.push_back(type);
+		}
 		accept(rbracket);
 		accept(ofsy);
 		const CTypeIdent *base = rule_start<const CTypeIdent*>(&CCompiler::rule_type, { semicolon }, m_Context->getError());
@@ -596,6 +625,10 @@ const CTypeIdent *CCompiler::rule_expression()
 		if (res->isT(ttError)) {
 			error(new CError(oppos, ecIncompatableTypes));
 		}
+
+		m_gen.Eval(left, right, op);
+
+		left = res;
 	}
 	return left;
 }
@@ -627,12 +660,7 @@ const CTypeIdent *CCompiler::rule_simpleExpression()
 					code = ecWrongPlusMinusOperandsTypes;
 				error(new CError(m_tokenpos, code));
 			}
-			CRegister rightreg = m_gen.popFromStack(right->size());
-			CRegister leftreg = m_gen.popFromStack(left->size());
-			m_gen.Eval(leftreg, rightreg, oper);
-			m_gen.pushToStack(leftreg);
-			m_gen.freeReg(leftreg);
-			m_gen.freeReg(rightreg);
+			m_gen.Eval(left, right, oper);
 		}
 	} while (op);
 	return left;
@@ -670,12 +698,7 @@ const CTypeIdent *CCompiler::rule_term()
 				}
 				error(new CError(m_tokenpos, code));
 			}
-			CRegister rightreg = m_gen.popFromStack(right->size());
-			CRegister leftreg = m_gen.popFromStack(left->size());
-			m_gen.Eval(leftreg, rightreg, oper);
-			m_gen.pushToStack(leftreg);
-			m_gen.freeReg(leftreg);
-			m_gen.freeReg(rightreg);
+			m_gen.Eval(left, right, oper);
 			op = true;
 		}
 	} while (op);
@@ -699,6 +722,7 @@ const CTypeIdent *CCompiler::rule_factor()
 			break;
 		case vtChar:
 			left = m_Context->getChar();
+			m_gen.pushIntToStack(to_string(int(m_token->m_val->ToString()[0])));
 		default:
 			break;
 		}
@@ -740,6 +764,11 @@ const CTypeIdent *CCompiler::rule_factor()
 		}
 		if (ident->m_type == itConst || ident->m_type == itEnumConst) {
 			left = ident->type();
+			if (ident->m_type == itEnumConst) {
+				auto enumIdent = dynamic_cast<CEnumConstIdent *>(ident);
+				auto EnumType = type_cast<const CEnumTypeIdent*>(enumIdent->type());
+				m_gen.pushIntToStack(to_string(EnumType->pos(enumIdent)));
+			}
 			nextToken();
 			return left;
 		}
@@ -770,13 +799,21 @@ const CTypeIdent * CCompiler::rule_arrayVar(const CTypeIdent *vartype)
 		array = tarray;
 	}
 	const vector<const CTypeIdent *> &indexes = array->indexes();
-	do {
+	{
 		const CTypeIdent *type = rule_expression();
 		if (i < indexes.size() && !CTypeUtility::Compatable(type, indexes[i])) {
 			error(new CError(m_tokenpos, ecWrongIndexType));
 		}
 		i++;
-	} while (m_token->is(comma));
+	}
+	while (m_token->is(comma)) {
+		nextToken();
+		const CTypeIdent *type = rule_expression();
+		if (i < indexes.size() && !CTypeUtility::Compatable(type, indexes[i])) {
+			error(new CError(m_tokenpos, ecWrongIndexType));
+		}
+		i++;
+	}
 	if (i != indexes.size()) {
 		error(new CError(m_tokenpos, ecWrongIndexesCount));
 	}
@@ -791,20 +828,28 @@ const CTypeIdent * CCompiler::rule_variable(CVarIdent *variable)
 	}
 	const CTypeIdent *type = variable->type();
 	nextToken();
+
+	{//положили адрес переменной в стек
+		m_gen.saveVarAddr(variable, m_Context->deep(variable->name()));
+	}
+
 	while (m_token->is(lbracket)) {
 		nextToken();
+		auto arrtype = type_cast<const CArrayTypeIdent*>(type);
+		
+		CRegister varAddr = m_gen.popFromStack(m_gen.getAddrSize());
+
 		type = rule_arrayVar(type);
+
+		if (arrtype) {
+			m_gen.saveIndexedVarAddr(varAddr, arrtype);
+		}
+		m_gen.pushToStack(varAddr);
+		m_gen.freeReg(varAddr);
+
 		accept(rbracket);
 	}
-	//положим в стек адрес, куда где лежит переменная
-	if (auto arrtype = type_cast<const CArrayTypeIdent*>(type)) {
 
-	}
-	else {
-		CRegister addr = m_gen.readAddr(variable, m_Context->deep(variable->name()));
-		m_gen.pushToStack(addr);
-		m_gen.freeReg(addr);
-	}
 	return type;
 }
 
