@@ -5,8 +5,6 @@ VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Pascal_compiler", "Pascal_compiler\Pascal_compiler.vcxproj", "{BA13310B-21A9-44F6-B03A-814D6CEDDD4E}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ForDisasm", "ForDisasm\ForDisasm.vcxproj", "{9A1D5A1E-3F6A-4D08-9E3E-26FDB3F1DB87}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -23,14 +21,6 @@ Global
 		{BA13310B-21A9-44F6-B03A-814D6CEDDD4E}.Release|x64.Build.0 = Release|x64
 		{BA13310B-21A9-44F6-B03A-814D6CEDDD4E}.Release|x86.ActiveCfg = Release|Win32
 		{BA13310B-21A9-44F6-B03A-814D6CEDDD4E}.Release|x86.Build.0 = Release|Win32
-		{9A1D5A1E-3F6A-4D08-9E3E-26FDB3F1DB87}.Debug|x64.ActiveCfg = Debug|x64
-		{9A1D5A1E-3F6A-4D08-9E3E-26FDB3F1DB87}.Debug|x64.Build.0 = Debug|x64
-		{9A1D5A1E-3F6A-4D08-9E3E-26FDB3F1DB87}.Debug|x86.ActiveCfg = Debug|Win32
-		{9A1D5A1E-3F6A-4D08-9E3E-26FDB3F1DB87}.Debug|x86.Build.0 = Debug|Win32
-		{9A1D5A1E-3F6A-4D08-9E3E-26FDB3F1DB87}.Release|x64.ActiveCfg = Release|x64
-		{9A1D5A1E-3F6A-4D08-9E3E-26FDB3F1DB87}.Release|x64.Build.0 = Release|x64
-		{9A1D5A1E-3F6A-4D08-9E3E-26FDB3F1DB87}.Release|x86.ActiveCfg = Release|Win32
-		{9A1D5A1E-3F6A-4D08-9E3E-26FDB3F1DB87}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

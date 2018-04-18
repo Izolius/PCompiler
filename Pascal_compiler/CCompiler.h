@@ -76,7 +76,7 @@ private:
 		}
 		catch (exception *ex) {
 			res = defaultResult;
-			while (!m_token->is(stopwords)) {
+			while (!m_token->is(stopwords) && !m_token->is(eofsy)) {
 				nextToken();
 			}
 		}
@@ -92,7 +92,7 @@ private:
 		}
 		catch (exception *ex) {
 			res = defaultResult;
-			while (!m_token->is(stopwords)) {
+			while (!m_token->is(stopwords) && !m_token->is(eofsy)) {
 				nextToken();
 			}
 		}
@@ -106,7 +106,7 @@ private:
 			(this->*rule)(arg);
 		}
 		catch (exception *ex) {
-			while (!m_token->is(stopwords)) {
+			while (!m_token->is(stopwords) && !m_token->is(eofsy)) {
 				nextToken();
 			}
 		}

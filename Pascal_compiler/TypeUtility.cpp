@@ -34,17 +34,29 @@ bool CTypeUtility::CompatableAssign(const CTypeIdent * typeA,const CTypeIdent * 
 	typeB = typeB->type();
 	if (typeA->isT(ttError) || typeB->isT(ttError))
 		return true;
-	bool res =
-		typeA->isEqual(typeB);
+	if (typeA->isEqual(typeB))
+		return true;
 	if (typeA->isOrdered() && typeB->isOrdered() && Compatable(typeA, typeB) && typeA->contain(typeB)) {
 		return true;
 	}
-	if (typeA->isT(ttReal) && typeB->isT(ttInt))
+	if (typeA->isT({ ttReal, ttInt }) && typeB->isT({ ttReal, ttInt }))
 		return true;
 	if (typeA->isT(ttString) && typeB->isT(ttString))
 		return true;
 	if (typeA->isT(ttString) && typeB->isT(ttChar))
 		return true;
+	bool res = false;
+	auto Abased = dynamic_cast<const CLimitedTypeIdent*>(typeA);
+	auto Bbased = dynamic_cast<const CLimitedTypeIdent*>(typeB);
+	if (Abased && !Bbased) {
+		res |= Abased->base()->isEqual(typeB);
+	}
+	if (Bbased && !Abased) {
+		res |= Bbased->base()->isEqual(typeA);
+	}
+	if (Abased && Bbased) {
+		res |= Abased->base()->isEqual(Bbased->base());
+	}
 	return res;
 }
 
@@ -72,7 +84,7 @@ const CTypeIdent * CTypeUtility::Result(const CTypeIdent * left, EOperator oper,
 		}
 	case EOperator::slash:
 		if (left->isT({ ttReal, ttInt }) && right && right->isT({ ttReal, ttInt })) {
-			context->getReal();
+			return context->getReal();
 		}
 		break;
 	case EOperator::modsy:
@@ -95,10 +107,17 @@ const CTypeIdent * CTypeUtility::Result(const CTypeIdent * left, EOperator oper,
 	case EOperator::greaterequal:
 		if (right && left->isEqual(right) && !left->isT({ttArray}) && !right->isT({ ttArray }))
 			return context->getBoolean();
+		if (left->isT({ ttReal, ttInt }) && right && right->isT({ ttReal, ttInt })) {
+			return context->getBoolean();
+		}
 		break;
 	case EOperator::equal:
+	case EOperator::latergrater:
 		if (right && left->isEqual(right))
 			return context->getBoolean();
+		if (left->isT({ ttReal, ttInt }) && right && right->isT({ ttReal, ttInt })) {
+			return context->getBoolean();
+		}
 		break;
 	}
 	if (context)

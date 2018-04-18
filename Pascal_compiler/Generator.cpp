@@ -50,8 +50,10 @@ void CGenerator::pushToStack(CVarIdent * var)
 	add(";add to stack " + var->name());
 	const CTypeIdent *type = var->type();
 	size_t size = type->size();
-	if (type->isT(ttArray))
+	while (type->isT(ttArray)) {
 		size *= type->len();
+		type = type_cast<const CBasedTypeIdent*>(type)->base();
+	}
 	add("sub", "esp", to_string(size));
 	m_stackSize.top() += size;
 	var->setOffset(m_stackSize.top());
@@ -100,6 +102,22 @@ void CGenerator::saveIndexedVarAddr(CRegister & varAddr, const CArrayTypeIdent* 
 		freeReg(resOffset);
 	}
 	add(";}");
+}
+
+void CGenerator::copyToTop(const CTypeIdent * var)
+{
+	if (!var->isT(ttArray)) {
+		CRegister reg = popFromStack(getAddrSize());
+		reg.setByVal(true);
+		pushToStack(reg);
+		freeReg(reg);
+	}
+	else {
+		CRegister reg = popFromStack(getAddrSize());
+		//reg.setByVal(true);
+		pushToStack(reg);
+		freeReg(reg);
+	}
 }
 
 void CGenerator::pushIntToStack(string val)
@@ -268,7 +286,7 @@ void CGenerator::Eval(const CTypeIdent *lefttype, const CTypeIdent *righttype, E
 	CRegister rightop = popFromStack(righttype->size());
 	CRegister leftop = popFromStack(lefttype->size());
 
-	if (lefttype->isEqual(righttype) && lefttype->isT(ttInt)) {
+	if (lefttype->isEqual(righttype) && lefttype->isT({ ttInt, ttChar })) {
 		auto compartion = [](EOperator op)->string {
 			switch (op)
 			{
@@ -422,6 +440,36 @@ void CGenerator::For_Next(CVarIdent * var, size_t deep, bool inc)
 void CGenerator::For_End()
 {
 	add("__forend" + to_string(m_LabelStack.top())+":");
+	//add("add", "esp", "4");
+	m_LabelStack.pop();
+	m_offset--;
+}
+
+void CGenerator::While_Start()
+{
+	m_offset++;
+	m_LabelNum++;
+	m_LabelStack.push(m_LabelNum);
+}
+
+void CGenerator::While_Check(size_t boolVarSize)
+{
+	add("__whilestart" + to_string(m_LabelStack.top()) + ":");
+	CRegister expr = popFromStack(boolVarSize);
+	add("test", expr.toString(), expr.toString());
+	add("je", "__whileend" + to_string(m_LabelStack.top()));
+
+	freeReg(expr);
+}
+
+void CGenerator::While_Next()
+{
+	add("jmp", "__whilestart" + to_string(m_LabelStack.top()));
+}
+
+void CGenerator::While_End()
+{
+	add("__whileend" + to_string(m_LabelStack.top()) + ":");
 	//add("add", "esp", "4");
 	m_LabelStack.pop();
 	m_offset--;

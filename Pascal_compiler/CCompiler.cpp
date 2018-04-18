@@ -1,4 +1,4 @@
-#include "PCompiler.h"
+#include "CCompiler.h"
 #include "TypeUtility.h"
 
 
@@ -22,6 +22,11 @@ bool CCompiler::Compile(const string &source, const string &dest)
 	//m_Code = Code;
 	ifstream filestream;
 	filestream.open(source);
+	if (!filestream) {
+		cout << source + " : file not found" << endl;
+		return false;
+	}
+	
 
 	m_ErrorManager.reset(new CErrorManager());
 	setlocale(LC_ALL, "rus");
@@ -44,8 +49,9 @@ bool CCompiler::Compile(const string &source, const string &dest)
 		return false;
 	}
 	else {
+		cout << "No Errors." << endl;
 		m_gen.buildFile(dest);
-		system(string("..\\fasm\\fasm.exe " + dest).c_str());
+		system(string("fasm.exe " + dest).c_str());
 		return true;
 	}
 	
@@ -121,7 +127,7 @@ void CCompiler::rule_start(void(CCompiler::* rule)(), initializer_list<EOperator
 		(this->*rule)();
 	}
 	catch (exception *ex) {
-		while (!m_token->is(stopwords)) {
+		while (!m_token->is(stopwords) && !m_token->is(eofsy)) {
 			nextToken();
 		}
 	}
@@ -405,14 +411,11 @@ void CCompiler::rule_statement()
 		accept(thensy);
 		bool bwasElse(false);
 		rule_start(&CCompiler::rule_statement, { semicolon, elsesy, endsy });
-		bool bWasSemicolon = true;
 		m_gen.If_Else();
 		if (m_token->is(semicolon)){
 			m_gen.If_End();
 			return;
 		}
-		else
-			bWasSemicolon = false;
 		if (m_token->is(elsesy)) {
 			nextToken();
 			rule_start(&CCompiler::rule_statement, { semicolon, endsy });
@@ -427,14 +430,18 @@ void CCompiler::rule_statement()
 		return;
 	}
 	if (m_token->is(whilesy)) {
+		m_gen.While_Start();
 		nextToken();
 		const CTypeIdent *cond(nullptr);
 		cond = rule_start<const CTypeIdent*>(&CCompiler::rule_expression, { dosy }, m_Context->getError());
 		if (!cond->isT(ttBoolean)) {
 			error(new CError(m_tokenpos, ecBooleanOperandType));
 		}
+		m_gen.While_Check(m_Context->getBoolean()->size());
 		accept(dosy);
 		rule_start(&CCompiler::rule_statement, { semicolon, endsy });
+		m_gen.While_Next();
+		m_gen.While_End();
 		return;
 	}
 	if (m_token->is(forsy)) {
@@ -491,6 +498,9 @@ const CTypeIdent *CCompiler::rule_type()
 		accept(lbracket);
 		{
 			const CTypeIdent *type = rule_simpleType();
+			if (!type->isOrdered()) {
+				error(new CError(m_tokenpos, ecTypeDeclError));
+			}
 			types.push_back(type);
 		}
 		
@@ -507,7 +517,7 @@ const CTypeIdent *CCompiler::rule_type()
 		return resType;
 	}
 	//acceptIdent();
-	error(new CError(m_tokenpos, ecTypeExpected));
+	error(new CError(m_tokenpos, ecTypeDeclError));
 	return m_Context->getError();
 }
 
@@ -529,6 +539,16 @@ const CTypeIdent * CCompiler::rule_simpleType()
 				accept(twopoints);
 				if (m_token->isIdent()) {
 					if (to = m_Context->findEC(m_token->ToString())) {
+						if (!from->type()->isEqual(to->type())) {
+							error(new CError(m_tokenpos, ecTypeDeclError));
+						}
+						else {
+							if (auto enumtype = type_cast<const CEnumTypeIdent*>(from->type())) {
+								if (enumtype->pos(from) > enumtype->pos(to)) {
+									error(new CError(m_tokenpos, ecTypeDeclError));
+								}
+							}
+						}
 						resType = new CEnumLimitedTypeIdent(from, to, from->type());
 						m_Context->add(resType);
 						nextToken();
@@ -560,6 +580,10 @@ const CTypeIdent * CCompiler::rule_simpleType()
 			val = dynamic_cast<CCharVariant *>(m_token->m_val);
 			if (val) {
 				to = val->m_val;
+				if (from > to) {
+					error(new CError(m_tokenpos, ecTypeDeclError));
+					to = from;
+				}
 				resType = new CCharLimitedTypeIdent(from, to, m_Context->getChar());
 				m_Context->add(resType);
 				nextToken();
@@ -578,6 +602,10 @@ const CTypeIdent * CCompiler::rule_simpleType()
 			val = dynamic_cast<CIntVariant *>(m_token->m_val);
 			if (val) {
 				to = val->m_val;
+				if (from > to) {
+					error(new CError(m_tokenpos, ecTypeDeclError));
+					to = from;
+				}
 				resType = new CIntLimitedTypeIdent(from, to, m_Context->getInteger());
 				nextToken();
 				return resType;
@@ -709,7 +737,7 @@ const CTypeIdent *CCompiler::rule_factor()
 {
 	const CTypeIdent *left(m_Context->getError()), *right(nullptr);
 	EVarType vartype;
-	if (m_token->is({ vtInt , vtReal, vtChar }, vartype)) {
+	if (m_token->is({ vtInt , vtReal, vtChar, vtString }, vartype)) {
 		switch (vartype)
 		{
 		case vtInt:
@@ -723,6 +751,10 @@ const CTypeIdent *CCompiler::rule_factor()
 		case vtChar:
 			left = m_Context->getChar();
 			m_gen.pushIntToStack(to_string(int(m_token->m_val->ToString()[0])));
+			break;
+		case vtString:
+			left = m_Context->getString();
+			break;
 		default:
 			break;
 		}
@@ -756,10 +788,7 @@ const CTypeIdent *CCompiler::rule_factor()
 			const CTypeIdent *res = rule_start<const CTypeIdent*>(&CCompiler::rule_variable, { rightpar,semicolon,star, slash, divsy, modsy, andsy ,
 				EOperator::plus, EOperator::minus, orsy ,EOperator::equal, later, EOperator::greater,
 				latergrater, laterequal, greaterequal }, m_Context->getError(), var);
-			CRegister reg = m_gen.popFromStack(m_gen.getAddrSize());
-			reg.setByVal(true);
-			m_gen.pushToStack(reg);
-			m_gen.freeReg(reg);
+			m_gen.copyToTop(res);
 			return res;
 		}
 		if (ident->m_type == itConst || ident->m_type == itEnumConst) {
@@ -801,7 +830,7 @@ const CTypeIdent * CCompiler::rule_arrayVar(const CTypeIdent *vartype)
 	const vector<const CTypeIdent *> &indexes = array->indexes();
 	{
 		const CTypeIdent *type = rule_expression();
-		if (i < indexes.size() && !CTypeUtility::Compatable(type, indexes[i])) {
+		if (i < indexes.size() && !CTypeUtility::CompatableAssign(type, indexes[i])) {
 			error(new CError(m_tokenpos, ecWrongIndexType));
 		}
 		i++;
@@ -809,7 +838,7 @@ const CTypeIdent * CCompiler::rule_arrayVar(const CTypeIdent *vartype)
 	while (m_token->is(comma)) {
 		nextToken();
 		const CTypeIdent *type = rule_expression();
-		if (i < indexes.size() && !CTypeUtility::Compatable(type, indexes[i])) {
+		if (i < indexes.size() && !CTypeUtility::CompatableAssign(type, indexes[i])) {
 			error(new CError(m_tokenpos, ecWrongIndexType));
 		}
 		i++;

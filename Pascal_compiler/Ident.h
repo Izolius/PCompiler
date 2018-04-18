@@ -69,9 +69,9 @@ public:
 	virtual bool contain(const CTypeIdent *ptype) const;
 	virtual const CTypeIdent *type() const override;
 	virtual const bool isSimple() const;
-	virtual size_t size() const = 0;
+	virtual size_t size() const = 0;//байт для 1 элемента
 	virtual int left() const { return 0; }
-	virtual size_t len() const = 0;
+	virtual size_t len() const = 0;//количество возможных значений
 protected:
 	CTypeIdent(const string &name, ETypeType type);
 };

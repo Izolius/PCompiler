@@ -12,6 +12,7 @@ class CContext
 	CEnumTypeIdent *m_BooleanIdent;
 	CErrorTypeIdent *m_ErrorIdent;
 	CRealTypeIdent *m_RealIdent;
+	CStringTypeIdent *m_StringIdent;
 	CContext *m_parent;
 	size_t m_NamesCounter;
 
@@ -34,6 +35,7 @@ public:
 	const CEnumTypeIdent *getBoolean() const;
 	const CCharTypeIdent *getChar() const;
 	const CErrorTypeIdent *getError() const;
+	const CStringTypeIdent* getString() const;
 
 };
 

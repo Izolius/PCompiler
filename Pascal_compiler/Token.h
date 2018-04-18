@@ -75,6 +75,8 @@ enum EOperator {
 	programsy,
 	funcsy,
 	procsy,
+
+	eofsy
 };
 
 class CToken

@@ -41,7 +41,12 @@ int CVarIdent::getOffset() const
 
 bool CTypeIdent::contain(const CTypeIdent * ptype) const
 {
-	return isEqual(ptype);
+	if (isEqual(ptype))
+		return true;
+	//if (auto type = type_cast<const CBasedTypeIdent*>(ptype))
+	//	if (type->base()->isEqual(this))
+	//		return true;
+	return false;
 }
 
 const CTypeIdent * CTypeIdent::type() const

@@ -10,6 +10,7 @@ CContext::CContext(CContext *parent):
 		add(True);
 		add(False);
 		add(m_CharIdent = new CCharTypeIdent());
+		add(m_StringIdent = new CStringTypeIdent());
 		add(m_IntIdent = new CIntTypeIdent());
 		add(m_RealIdent = new CRealTypeIdent());
 		add(m_BooleanIdent = new CEnumTypeIdent("boolean", { False, True }, ttBoolean));
@@ -29,7 +30,6 @@ CContext::CContext(CContext *parent):
 			add(procType);
 			add(new CProcIdent("printc", procType));
 		}
-		
 		m_NamesCounter = 0;
 	}
 }
@@ -148,4 +148,11 @@ const CErrorTypeIdent * CContext::getError() const
 	if (parent())
 		return parent()->getError();
 	return m_ErrorIdent;
+}
+
+const CStringTypeIdent * CContext::getString() const
+{
+	if (parent())
+		return parent()->getString();
+	return m_StringIdent;
 }

@@ -65,6 +65,7 @@ public:
 	void freeStackSpace(size_t bytes);
 	void saveVarAddr(CVarIdent *var, size_t deep);
 	void saveIndexedVarAddr(CRegister &varAddr, const CArrayTypeIdent* vartype);
+	void copyToTop(const CTypeIdent *var);
 
 	void writeToStack(CRegister what, int offset);
 	void writeToStack(CRegister what, CRegister addr);
@@ -90,6 +91,11 @@ public:
 	void For_Check(CVarIdent *var, size_t deep, bool inc);
 	void For_Next(CVarIdent *var, size_t deep, bool inc);
 	void For_End();
+
+	void While_Start();
+	void While_Check(size_t boolVarSize);
+	void While_Next();
+	void While_End();
 
 	void If_Start();
 	void If_Check();

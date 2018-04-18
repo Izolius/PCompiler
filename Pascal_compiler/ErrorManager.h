@@ -9,8 +9,9 @@ enum EErrorCode
 {
 	ecUnknownLiter=6,
 	ecIdentExpected=2,
+	ecTypeDeclError=10,//ошибка в описании типа
 	ecSecondlyDescribedIdent=101,//»м€ описано повторно
-	ecWrongNameUsing=100,//»сопльзование иени не соответствует описанию
+	ecWrongNameUsing=100,//»сопльзование имени не соответствует описанию
 	ecLowerBoundMoreThanBigger=102,//нижн€€граница превосходит верхнюю
 	ecUnknownName=104,//им€ не описано
 	ecWrongRealType=109,// тип не должен быть REAL

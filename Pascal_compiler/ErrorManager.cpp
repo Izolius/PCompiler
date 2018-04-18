@@ -64,6 +64,8 @@ string CError::ToString() const
 		return "Должно идти имя";
 	case ecUnknownLiter:
 		return "Запрещённый символ";
+	case ecTypeDeclError:
+		return "Ошибка в описании типа";
 	case ecUnknownName:
 		return "Неизвестный идентификатор";
 	case ecWrongRealType:

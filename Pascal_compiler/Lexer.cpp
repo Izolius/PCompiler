@@ -1,4 +1,5 @@
 #include "Lexer.h"
+#include <algorithm>
 
 
 
@@ -73,8 +74,8 @@ void CLexer::nextLiter()
 	else {
 		m_curpos.m_pos++;
 	}
-	m_ch = m_line[m_curpos.m_pos];
-	if (m_line == "")
+	m_ch = tolower(m_line[m_curpos.m_pos]);
+	if (m_line == "" && !m_toStop)
 		nextLiter();
 }
 
@@ -82,6 +83,7 @@ CToken *CLexer::nextToken()
 {
 	if (m_toStop) {
 		m_token.m_str = "";
+		m_token.Change(EOperator::eofsy);
 		return &m_token;
 	}
 	while (m_ch == ' ' || m_ch == '\t') nextLiter();
@@ -147,8 +149,11 @@ CToken *CLexer::nextToken()
 		removeComments(false);
 		nextToken(); // ASK: Надо ли?
 		break;
+	case '\0':
+		nextToken();
+		break;
 	default:
-		if (m_ch >= 'a' && m_ch <= 'z' || m_ch >= 'A' && m_ch <= 'Z')
+		if (m_ch >= 'a' && m_ch <= 'z' || m_ch >= 'A' && m_ch <= 'Z' || m_ch == '_')
 			scanIdentKeyWord();
 		else if (m_ch >= '0' && m_ch <= '9')
 			scanUIntFloatC();
@@ -186,7 +191,7 @@ void CLexer::scanIdentKeyWord()
 	size_t line = m_curpos.m_line;
 	while ((m_ch >= 'a' && m_ch <= 'z' ||
 		m_ch >= 'A' && m_ch <= 'Z' ||
-		m_ch >= '0' && m_ch <= '9') && line == m_curpos.m_line)
+		m_ch >= '0' && m_ch <= '9' || m_ch == '_') && line == m_curpos.m_line)
 	{
 		name += (char)tolower(m_ch);
 		nextLiter();
@@ -214,25 +219,46 @@ bool CLexer::IsKW(const string &ident, EOperator &kw) const
 void CLexer::scanUIntFloatC(bool isNeg/* = false*/)
 {
 	scanUInt();
+	int line = m_tokenpos.m_line;
 	CIntVariant *val = dynamic_cast<CIntVariant*>(m_token.m_val);
 	if (isNeg) {
 		val->m_val = -val->m_val;
 	}
-	if (m_ch != '.') {
-		return;
-	}
-	nextLiter();
-	int maxlen = numeric_limits<float>::digits10;
-	int curlen(0);
-	float nmb_float((float)val->m_val), pow(0.1f);
-	while (m_ch >= '0' && m_ch <= '9'/* && curlen < maxlen*/) {
-		int digit = m_ch - '0';
-		nmb_float += digit*pow;
-		pow /= 10;
-		curlen++;
+	if (m_ch == '.') {
 		nextLiter();
+		int maxlen = numeric_limits<float>::digits10;
+		int curlen(0);
+		float nmb_float((float)val->m_val), pow(0.1f);
+		while (m_ch >= '0' && m_ch <= '9'/* && curlen < maxlen*/ && m_curpos.m_line == line) {
+			int digit = m_ch - '0';
+			nmb_float += digit*pow;
+			pow /= 10;
+			curlen++;
+			nextLiter();
+		}
+		m_token.Change(new CRealVariant(nmb_float));
 	}
-	m_token.Change(new CRealVariant(nmb_float));
+	if (m_ch == 'e' && m_curpos.m_line == line) {
+		nextLiter();
+		string num;
+		if ((m_ch == '-' || m_ch == '+') && m_curpos.m_line == line)
+		{
+			num += m_ch;
+			nextLiter();
+		}
+		while ((m_ch >= '0' && m_ch <= '9') && m_curpos.m_line == line)
+		{
+			num += m_ch;
+			nextLiter();
+		}
+		num = m_token.ToString() + "e" + num;
+		{
+			size_t pos = num.find('.');
+			if (pos != -1)
+				num.replace(pos, 1, ",");
+		}
+		m_token.Change(new CRealVariant(std::stof(num)));
+	}
 }
 
 void CLexer::scanUInt()
@@ -281,7 +307,7 @@ void CLexer::removeComments(bool fromPar)
 		}
 	}
 	else {
-		while (m_ch != '}') {
+		while (m_ch != '}' && !m_toStop) {
 			nextLiter();
 		}
 		nextLiter();
@@ -296,8 +322,12 @@ void CLexer::error(CError * error)
 void CLexer::ReadNextLine()
 {
 	if (m_stream.eof())
+	{
 		m_toStop = true;
-	getline(m_stream, m_line);
+		m_line = "";
+	}
+	else
+		getline(m_stream, m_line);
 }
 
 void CLexer::WriteCurLine(bool bWithErrors)
